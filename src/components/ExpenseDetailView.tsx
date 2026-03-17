@@ -321,9 +321,19 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
                     <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
                   )}
                 </div>
-                <p className="text-lg font-bold">
-                  {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
-                </p>
+                {canEdit ? (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="text-lg font-bold hover:underline decoration-dashed underline-offset-4 cursor-pointer"
+                    title="Click to edit"
+                  >
+                    {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
+                  </button>
+                ) : (
+                  <p className="text-lg font-bold">
+                    {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between mt-4 text-sm">
