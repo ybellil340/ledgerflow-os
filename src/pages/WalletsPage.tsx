@@ -237,15 +237,27 @@ export default function WalletsPage() {
         <TableCell>
           {isAdmin && (
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-7 gap-1 text-primary hover:text-primary"
-                onClick={() => openAddFunds(wallet.id)}
-              >
-                <Plus className="h-3 w-3" />
-                Add Funds
-              </Button>
+              {wallet.is_primary ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 gap-1 text-primary hover:text-primary"
+                  onClick={() => setBankDetailsOpen(true)}
+                >
+                  <Landmark className="h-3 w-3" />
+                  Bank Details
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 gap-1 text-primary hover:text-primary"
+                  onClick={() => openAddFunds(wallet.id)}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Funds
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground">
                 Manage <ChevronRight className="h-3 w-3" />
               </Button>
