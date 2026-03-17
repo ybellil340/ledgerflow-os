@@ -259,6 +259,89 @@ export type Database = {
           },
         ]
       }
+      budgets: {
+        Row: {
+          amount: number
+          category_id: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          department_id: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          org_id: string
+          period: Database["public"]["Enums"]["budget_period"]
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          department_id?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          org_id: string
+          period?: Database["public"]["Enums"]["budget_period"]
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          department_id?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          org_id?: string
+          period?: Database["public"]["Enums"]["budget_period"]
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cards: {
         Row: {
           card_name: string
@@ -1031,6 +1114,7 @@ export type Database = {
         | "approver"
         | "employee"
         | "tax_advisor"
+      budget_period: "monthly" | "quarterly" | "yearly"
       card_status: "active" | "frozen" | "cancelled"
       expense_status:
         | "draft"
@@ -1182,6 +1266,7 @@ export const Constants = {
         "employee",
         "tax_advisor",
       ],
+      budget_period: ["monthly", "quarterly", "yearly"],
       card_status: ["active", "frozen", "cancelled"],
       expense_status: [
         "draft",
