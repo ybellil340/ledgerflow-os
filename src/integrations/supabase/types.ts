@@ -344,6 +344,7 @@ export type Database = {
       }
       cards: {
         Row: {
+          allowed_category_ids: string[] | null
           card_name: string
           card_type: string
           created_at: string
@@ -352,11 +353,14 @@ export type Database = {
           id: string
           last_four: string
           org_id: string
+          spend_period: Database["public"]["Enums"]["spend_period"]
           spending_limit: number | null
           status: Database["public"]["Enums"]["card_status"]
           updated_at: string
+          wallet_id: string | null
         }
         Insert: {
+          allowed_category_ids?: string[] | null
           card_name: string
           card_type?: string
           created_at?: string
@@ -365,11 +369,14 @@ export type Database = {
           id?: string
           last_four?: string
           org_id: string
+          spend_period?: Database["public"]["Enums"]["spend_period"]
           spending_limit?: number | null
           status?: Database["public"]["Enums"]["card_status"]
           updated_at?: string
+          wallet_id?: string | null
         }
         Update: {
+          allowed_category_ids?: string[] | null
           card_name?: string
           card_type?: string
           created_at?: string
@@ -378,9 +385,11 @@ export type Database = {
           id?: string
           last_four?: string
           org_id?: string
+          spend_period?: Database["public"]["Enums"]["spend_period"]
           spending_limit?: number | null
           status?: Database["public"]["Enums"]["card_status"]
           updated_at?: string
+          wallet_id?: string | null
         }
         Relationships: [
           {
@@ -388,6 +397,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cards_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
             referencedColumns: ["id"]
           },
         ]
@@ -1080,6 +1096,114 @@ export type Database = {
           },
         ]
       }
+      wallet_transfers: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          currency: string
+          from_wallet_id: string
+          id: string
+          note: string | null
+          org_id: string
+          to_wallet_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          currency?: string
+          from_wallet_id: string
+          id?: string
+          note?: string | null
+          org_id: string
+          to_wallet_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          from_wallet_id?: string
+          id?: string
+          note?: string | null
+          org_id?: string
+          to_wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transfers_from_wallet_id_fkey"
+            columns: ["from_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transfers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transfers_to_wallet_id_fkey"
+            columns: ["to_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          bic_display: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          iban_display: string | null
+          id: string
+          is_primary: boolean
+          name: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          bic_display?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          iban_display?: string | null
+          id?: string
+          is_primary?: boolean
+          name: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          bic_display?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          iban_display?: string | null
+          id?: string
+          is_primary?: boolean
+          name?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1130,6 +1254,7 @@ export type Database = {
         | "paid"
         | "overdue"
         | "cancelled"
+      spend_period: "daily" | "monthly"
       transaction_status: "pending" | "completed" | "declined" | "reversed"
     }
     CompositeTypes: {
@@ -1284,6 +1409,7 @@ export const Constants = {
         "overdue",
         "cancelled",
       ],
+      spend_period: ["daily", "monthly"],
       transaction_status: ["pending", "completed", "declined", "reversed"],
     },
   },

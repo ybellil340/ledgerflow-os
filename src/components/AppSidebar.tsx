@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CreditCard, Receipt, RefreshCw, FileText, FileOutput,
-  PiggyBank, Users, Building2, Calculator, TrendingUp, Briefcase,
+  PiggyBank, Users, Building2, Calculator, TrendingUp, Briefcase, Wallet,
   BarChart3, UserCog, DollarSign, Plug, Bell, Download, Shield, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -21,6 +21,7 @@ const navSections = [
   {
     label: "FINANCE",
     items: [
+      { title: "Wallets", url: "/wallets", icon: Wallet },
       { title: "Cards", url: "/cards", icon: CreditCard },
       { title: "Expenses", url: "/expenses", icon: Receipt },
       { title: "Reimbursements", url: "/reimbursements", icon: RefreshCw },

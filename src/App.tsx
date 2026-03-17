@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import SeedPage from "./pages/SeedPage";
+import WalletsPage from "./pages/WalletsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./components/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/seed" element={<SeedPage />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/wallets" element={<WalletsPage />} />
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/expenses" element={<ExpensesPage />} />
                 <Route path="/reimbursements" element={<ReimbursementsPage />} />
