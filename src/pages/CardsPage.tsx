@@ -213,6 +213,37 @@ export default function CardsPage() {
                       </div>
                     </div>
                   )}
+                  <div className="space-y-1.5">
+                    <Label>Country restrictions</Label>
+                    <Select value={form.country_mode} onValueChange={(v: "all" | "selected") => setForm({ ...form, country_mode: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All countries</SelectItem>
+                        <SelectItem value="selected">Selected countries only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.country_mode === "selected" && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Select allowed countries:</p>
+                      <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto border rounded-md p-3">
+                        {COUNTRIES.map((c) => (
+                          <label key={c.code} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={form.allowed_countries.includes(c.code)}
+                              onCheckedChange={() => setForm(prev => ({
+                                ...prev,
+                                allowed_countries: prev.allowed_countries.includes(c.code)
+                                  ? prev.allowed_countries.filter(x => x !== c.code)
+                                  : [...prev.allowed_countries, c.code]
+                              }))}
+                            />
+                            <span className="truncate">{c.flag} {c.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <Button type="submit" className="w-full" disabled={createCard.isPending}>{createCard.isPending ? "Issuing..." : "Issue card"}</Button>
                 </form>
               </DialogContent>
