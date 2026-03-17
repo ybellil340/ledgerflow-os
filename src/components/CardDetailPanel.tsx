@@ -75,6 +75,10 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
       setEditLimit(String(card.spending_limit ?? "5000"));
       setEditPeriod(card.spend_period || "monthly");
       setEditCategories(card.allowed_category_ids || []);
+      setEditWalletId(card.wallet_id || "none");
+      const countries = card.allowed_countries || [];
+      setCountryMode(countries.length === 0 ? "all" : "selected");
+      setEditCountries(countries);
     }
   }, [card, editing]);
 
