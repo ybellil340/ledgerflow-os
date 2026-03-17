@@ -27,6 +27,16 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
   const [accountingOpen, setAccountingOpen] = useState(true);
   const [taxOpen, setTaxOpen] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const isRejected = expense.status === "rejected";
+  const isOwner = user?.id === expense.submitter_id;
+  const canEdit = isOwner && (expense.status === "draft" || isRejected);
+  const [editing, setEditing] = useState(false);
+
+  // Editable core fields (for resubmit)
+  const [editTitle, setEditTitle] = useState(expense.title);
+  const [editAmount, setEditAmount] = useState(expense.amount?.toString() || "");
+  const [editDate, setEditDate] = useState(expense.expense_date || "");
+  const [editDescription, setEditDescription] = useState(expense.description || "");
 
   // Editable fields
   const [categoryId, setCategoryId] = useState(expense.category_id || "");
