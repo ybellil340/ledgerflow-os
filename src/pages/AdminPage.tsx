@@ -102,6 +102,7 @@ export default function AdminPage() {
       <Tabs defaultValue="org" className="space-y-4">
         <TabsList>
           <TabsTrigger value="org">Organization</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="cost-centers">Cost Centers</TabsTrigger>
         </TabsList>
