@@ -15,6 +15,40 @@ import { PinSetupDialog } from "@/components/PinSetupDialog";
 import { useToast } from "@/hooks/use-toast";
 import { CreditCard, Eye, EyeOff, Snowflake, X, Copy, Check, Pencil } from "lucide-react";
 
+const COUNTRIES = [
+  { code: "DE", name: "Germany", flag: "🇩🇪" },
+  { code: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "CH", name: "Switzerland", flag: "🇨🇭" },
+  { code: "FR", name: "France", flag: "🇫🇷" },
+  { code: "NL", name: "Netherlands", flag: "🇳🇱" },
+  { code: "BE", name: "Belgium", flag: "🇧🇪" },
+  { code: "IT", name: "Italy", flag: "🇮🇹" },
+  { code: "ES", name: "Spain", flag: "🇪🇸" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "IE", name: "Ireland", flag: "🇮🇪" },
+  { code: "SE", name: "Sweden", flag: "🇸🇪" },
+  { code: "NO", name: "Norway", flag: "🇳🇴" },
+  { code: "DK", name: "Denmark", flag: "🇩🇰" },
+  { code: "FI", name: "Finland", flag: "🇫🇮" },
+  { code: "PL", name: "Poland", flag: "🇵🇱" },
+  { code: "CZ", name: "Czech Republic", flag: "🇨🇿" },
+  { code: "US", name: "United States", flag: "🇺🇸" },
+  { code: "CA", name: "Canada", flag: "🇨🇦" },
+  { code: "AE", name: "UAE", flag: "🇦🇪" },
+  { code: "SG", name: "Singapore", flag: "🇸🇬" },
+  { code: "JP", name: "Japan", flag: "🇯🇵" },
+  { code: "AU", name: "Australia", flag: "🇦🇺" },
+  { code: "IN", name: "India", flag: "🇮🇳" },
+  { code: "BR", name: "Brazil", flag: "🇧🇷" },
+  { code: "CN", name: "China", flag: "🇨🇳" },
+  { code: "KR", name: "South Korea", flag: "🇰🇷" },
+  { code: "TR", name: "Turkey", flag: "🇹🇷" },
+  { code: "SA", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "ZA", name: "South Africa", flag: "🇿🇦" },
+  { code: "MX", name: "Mexico", flag: "🇲🇽" },
+];
+
 interface CardDetailPanelProps {
   card: any;
   open: boolean;
@@ -45,11 +79,24 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
   const [editLimit, setEditLimit] = useState("");
   const [editPeriod, setEditPeriod] = useState<"daily" | "monthly">("monthly");
   const [editCategories, setEditCategories] = useState<string[]>([]);
+  const [editWalletId, setEditWalletId] = useState("");
+  const [countryMode, setCountryMode] = useState<"all" | "selected">("all");
+  const [editCountries, setEditCountries] = useState<string[]>([]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["expense_categories", orgId],
     queryFn: async () => {
       const { data, error } = await supabase.from("expense_categories").select("*").eq("org_id", orgId!).eq("is_active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId && editing,
+  });
+
+  const { data: wallets = [] } = useQuery({
+    queryKey: ["wallets", orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("wallets").select("*").eq("org_id", orgId!).order("is_primary", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -62,6 +109,10 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
       setEditLimit(String(card.spending_limit ?? "5000"));
       setEditPeriod(card.spend_period || "monthly");
       setEditCategories(card.allowed_category_ids || []);
+      setEditWalletId(card.wallet_id || "none");
+      const countries = card.allowed_countries || [];
+      setCountryMode(countries.length === 0 ? "all" : "selected");
+      setEditCountries(countries);
     }
   }, [card, editing]);
 
@@ -135,6 +186,8 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
         spending_limit: parseFloat(editLimit),
         spend_period: editPeriod,
         allowed_category_ids: editCategories.length > 0 ? editCategories : [],
+        wallet_id: editWalletId === "none" ? null : editWalletId,
+        allowed_countries: countryMode === "all" ? [] : editCountries,
       }).eq("id", card.id);
       if (error) throw error;
     },
@@ -146,6 +199,11 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const toggleCountry = (code: string) => {
+    setEditCountries((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
   const toggleCategory = (catId: string) => {
     setEditCategories((prev) =>
       prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
@@ -262,6 +320,10 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                   <span className="text-muted-foreground">Wallet</span>
                   <span>{card.wallets?.name || "—"}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Country restrictions</span>
+                  <span>{(!card.allowed_countries || card.allowed_countries.length === 0) ? "All countries" : `${card.allowed_countries.length} countries`}</span>
+                </div>
                 {card.allowed_category_ids && card.allowed_category_ids.length > 0 && (
                   <div className="text-sm">
                     <span className="text-muted-foreground">Allowed categories</span>
@@ -292,6 +354,41 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                     </Select>
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Wallet</Label>
+                  <Select value={editWalletId} onValueChange={setEditWalletId}>
+                    <SelectTrigger><SelectValue placeholder="No wallet" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No wallet</SelectItem>
+                      {wallets.map((w: any) => (
+                        <SelectItem key={w.id} value={w.id}>{w.name} ({Number(w.balance).toLocaleString("de-DE", { style: "currency", currency: "EUR" })})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Country restrictions</Label>
+                  <Select value={countryMode} onValueChange={(v: "all" | "selected") => setCountryMode(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All countries</SelectItem>
+                      <SelectItem value="selected">Selected countries only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {countryMode === "selected" && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Select allowed countries:</p>
+                    <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto border rounded-md p-3 bg-background">
+                      {COUNTRIES.map((c) => (
+                        <label key={c.code} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox checked={editCountries.includes(c.code)} onCheckedChange={() => toggleCountry(c.code)} />
+                          <span className="truncate">{c.flag} {c.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {categories.length > 0 && (
                   <div className="space-y-2">
                     <Label>Allowed categories</Label>
