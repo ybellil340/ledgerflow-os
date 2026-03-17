@@ -242,33 +242,62 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
       <div className="w-[380px] flex-shrink-0 overflow-y-auto">
         {/* Header: merchant + amount */}
         <div className="p-5 border-b border-border">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-base">{expense.title}</h3>
-              {expense.expense_categories?.name && (
-                <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
-              )}
-            </div>
-            <p className="text-lg font-bold">
-              {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between mt-4 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Expense Date</p>
-              <p className="font-medium">
-                {new Date(expense.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+          {isRejected && isOwner && (
+            <div className="mb-3 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-xs font-medium text-destructive flex items-center gap-1.5">
+                <X className="h-3.5 w-3.5" /> Rejected{expense.rejection_reason ? `: ${expense.rejection_reason}` : ""}
               </p>
             </div>
-            <StatusBadge status={expense.status} />
-          </div>
-
-          {expense.description && (
-            <p className="text-sm text-muted-foreground mt-3">{expense.description}</p>
           )}
-          {expense.rejection_reason && (
-            <p className="text-sm text-destructive mt-2">Rejected: {expense.rejection_reason}</p>
+          {editing ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Title</Label>
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Amount (€)</Label>
+                  <Input type="number" step="0.01" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Date</Label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-9 text-sm" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} className="text-sm" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-base">{expense.title}</h3>
+                  {expense.expense_categories?.name && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
+                  )}
+                </div>
+                <p className="text-lg font-bold">
+                  {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between mt-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Expense Date</p>
+                  <p className="font-medium">
+                    {new Date(expense.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <StatusBadge status={expense.status} />
+              </div>
+
+              {expense.description && (
+                <p className="text-sm text-muted-foreground mt-3">{expense.description}</p>
+              )}
+            </>
           )}
         </div>
 
