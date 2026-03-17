@@ -345,6 +345,7 @@ export type Database = {
       cards: {
         Row: {
           allowed_category_ids: string[] | null
+          allowed_countries: string[] | null
           card_name: string
           card_number_encrypted: string | null
           card_type: string
@@ -365,6 +366,7 @@ export type Database = {
         }
         Insert: {
           allowed_category_ids?: string[] | null
+          allowed_countries?: string[] | null
           card_name: string
           card_number_encrypted?: string | null
           card_type?: string
@@ -385,6 +387,7 @@ export type Database = {
         }
         Update: {
           allowed_category_ids?: string[] | null
+          allowed_countries?: string[] | null
           card_name?: string
           card_number_encrypted?: string | null
           card_type?: string
