@@ -103,7 +103,7 @@ export default function WalletsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
       setCreateOpen(false);
-      setWalletForm({ name: "", iban_display: "", bic_display: "" });
+      setWalletForm({ name: "", iban_display: "", bic_display: "", low_funds_threshold: "100" });
       toast({ title: "Wallet created" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
