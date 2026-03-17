@@ -178,7 +178,7 @@ export default function WalletsPage() {
 
   const WalletTableRow = ({ wallet, showLowFunds = false }: { wallet: any; showLowFunds?: boolean }) => {
     const activeCards = getActiveCardCount(wallet.id);
-    const isLow = showLowFunds && Number(wallet.balance) < LOW_FUNDS_THRESHOLD;
+    const isLow = showLowFunds && Number(wallet.balance) < Number(wallet.low_funds_threshold ?? 100);
 
     return (
       <TableRow>
