@@ -108,19 +108,19 @@ export default function WalletsPage() {
 
   const addFundsToWallet = useMutation({
     mutationFn: async () => {
-      if (!addFundsWalletId || !primaryWallet) throw new Error("Missing wallet");
+      if (!addFundsWalletId || !addFundsSourceId) throw new Error("Missing wallet");
       const amount = parseFloat(addFundsAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
 
-      // Only sub-wallet funding allowed (from primary)
-      if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
+      const sourceWallet = wallets.find((w: any) => w.id === addFundsSourceId);
       const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
-      if (!targetWallet) throw new Error("Wallet not found");
+      if (!sourceWallet || !targetWallet) throw new Error("Wallet not found");
+      if (Number(sourceWallet.balance) < amount) throw new Error("Insufficient balance in source wallet");
 
       const { error: e1 } = await supabase
         .from("wallets")
-        .update({ balance: Number(primaryWallet.balance) - amount })
-        .eq("id", primaryWallet.id);
+        .update({ balance: Number(sourceWallet.balance) - amount })
+        .eq("id", sourceWallet.id);
       if (e1) throw e1;
 
       const { error: e2 } = await supabase
@@ -131,10 +131,10 @@ export default function WalletsPage() {
 
       const { error: e3 } = await supabase.from("wallet_transfers").insert({
         org_id: orgId!,
-        from_wallet_id: primaryWallet.id,
+        from_wallet_id: sourceWallet.id,
         to_wallet_id: targetWallet.id,
         amount,
-        note: `Fund ${targetWallet.name}`,
+        note: `Fund ${targetWallet.name} from ${sourceWallet.name}`,
         created_by: user!.id,
       });
       if (e3) throw e3;
@@ -145,47 +145,8 @@ export default function WalletsPage() {
       setAddFundsOpen(false);
       setAddFundsAmount("");
       setAddFundsWalletId(null);
+      setAddFundsSourceId("");
       toast({ title: "Funds transferred" });
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const transferFunds = useMutation({
-    mutationFn: async () => {
-      const amount = parseFloat(transferForm.amount);
-      if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
-      const fromW = wallets.find((w: any) => w.id === transferForm.from_wallet_id);
-      if (!fromW || Number(fromW.balance) < amount) throw new Error("Insufficient balance");
-
-      const { error: e1 } = await supabase
-        .from("wallets")
-        .update({ balance: Number(fromW.balance) - amount })
-        .eq("id", fromW.id);
-      if (e1) throw e1;
-
-      const toW = wallets.find((w: any) => w.id === transferForm.to_wallet_id);
-      const { error: e2 } = await supabase
-        .from("wallets")
-        .update({ balance: Number(toW!.balance) + amount })
-        .eq("id", toW!.id);
-      if (e2) throw e2;
-
-      const { error: e3 } = await supabase.from("wallet_transfers").insert({
-        org_id: orgId!,
-        from_wallet_id: fromW.id,
-        to_wallet_id: toW!.id,
-        amount,
-        note: transferForm.note || null,
-        created_by: user!.id,
-      });
-      if (e3) throw e3;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallets"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet_transfers"] });
-      setTransferOpen(false);
-      setTransferForm({ from_wallet_id: "", to_wallet_id: "", amount: "", note: "" });
-      toast({ title: "Transfer complete" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
