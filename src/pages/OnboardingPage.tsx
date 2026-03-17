@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useState } from "react";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function OnboardingPage() {
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { orgId, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
@@ -30,22 +31,27 @@ export default function OnboardingPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // Create org
-      const { data: org, error: orgError } = await supabase
+      const { data: insertedOrgs, error: orgError } = await supabase
         .from("organizations")
         .insert({ name: companyName, legal_name: legalName || null, tax_id: taxId || null })
-        .select()
-        .single();
+        .select("id");
       if (orgError) throw orgError;
 
-      // Add self as company_admin
+      const org = insertedOrgs?.[0];
+      if (!org?.id) {
+        throw new Error("Organization creation succeeded but no organization ID was returned.");
+      }
+
       const { error: memberError } = await supabase
         .from("org_members")
         .insert({ org_id: org.id, user_id: user.id, role: "company_admin" as const });
       if (memberError) throw memberError;
 
-      await queryClient.invalidateQueries({ queryKey: ["org-membership"] });
+      await queryClient.invalidateQueries({ queryKey: ["org-membership", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["organization", org.id] });
+
       toast({ title: "Company created", description: `${companyName} is ready.` });
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
