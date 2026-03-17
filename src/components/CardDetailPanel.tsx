@@ -169,7 +169,7 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
     setEditCountries((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
     );
-
+  };
   const toggleCategory = (catId: string) => {
     setEditCategories((prev) =>
       prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
