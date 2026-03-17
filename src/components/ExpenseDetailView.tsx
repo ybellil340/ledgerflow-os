@@ -299,7 +299,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Amount (€)</Label>
+                  <Label className="text-xs text-muted-foreground">Amount</Label>
                   <Input type="number" step="0.01" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1.5">
