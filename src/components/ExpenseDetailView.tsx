@@ -202,11 +202,18 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
         {expense.receipt_url ? (
           <div className="w-full h-full flex flex-col">
             {expense.receipt_url.toLowerCase().endsWith(".pdf") ? (
-              <iframe
-                src={expense.receipt_url}
-                title="Receipt PDF"
-                className="w-full flex-1 rounded border border-border min-h-[300px]"
-              />
+              <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                <div className="w-20 h-24 rounded-lg bg-muted border border-border flex flex-col items-center justify-center">
+                  <span className="text-2xl">📄</span>
+                  <span className="text-[10px] font-medium text-muted-foreground mt-1">PDF</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {expense.receipt_url.split("/").pop()?.substring(0, 40)}
+                </p>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer">Open PDF receipt</a>
+                </Button>
+              </div>
             ) : (
               <img
                 src={expense.receipt_url}
@@ -215,9 +222,6 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
               />
             )}
             <div className="flex items-center justify-center gap-2 mt-3">
-              <Button size="sm" variant="outline" asChild>
-                <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer">Open receipt</a>
-              </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={handleScanReceipt} disabled={scanning}>
                 {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
                 {scanning ? "Scanning..." : "Scan receipt"}
