@@ -131,6 +131,7 @@ export default function CardsPage() {
         spending_limit: parseFloat(form.spending_limit),
         wallet_id: form.wallet_id || null, spend_period: form.spend_period,
         allowed_category_ids: form.allowed_category_ids.length > 0 ? form.allowed_category_ids : [],
+        allowed_countries: form.country_mode === "all" ? [] : form.allowed_countries,
         card_number_encrypted: fullNumber, cvv_encrypted: cvv,
         expiry_month: expMonth, expiry_year: expYear,
       });
