@@ -642,8 +642,11 @@ export type Database = {
           status: Database["public"]["Enums"]["expense_status"]
           submitted_at: string | null
           submitter_id: string
+          tax_registration_number: string | null
           title: string
           updated_at: string
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           amount: number
@@ -663,8 +666,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["expense_status"]
           submitted_at?: string | null
           submitter_id: string
+          tax_registration_number?: string | null
           title: string
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           amount?: number
@@ -684,8 +690,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["expense_status"]
           submitted_at?: string | null
           submitter_id?: string
+          tax_registration_number?: string | null
           title?: string
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
