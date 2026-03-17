@@ -1,14 +1,34 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Building2, Activity } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { seedGermanDefaults } from "@/lib/seedData";
+import { Shield, Users, Building2, Activity, Database } from "lucide-react";
 
 export default function AdminPage() {
   const { orgId, role, organization } = useOrganization();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [seeding, setSeeding] = useState(false);
   const isAdmin = role === "company_admin" || role === "super_admin";
+
+  const handleSeed = async () => {
+    if (!orgId) return;
+    setSeeding(true);
+    const result = await seedGermanDefaults(orgId);
+    toast({ title: result.success ? "Seed data created" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ["vat-codes"] });
+      queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["chart-of-accounts"] });
+    }
+    setSeeding(false);
+  };
 
   const { data: members = [] } = useQuery({
     queryKey: ["admin-members", orgId],
@@ -50,9 +70,14 @@ export default function AdminPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1200px]">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold">Admin</h1>
-        <p className="text-muted-foreground text-sm">Organization settings and management</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold">Admin</h1>
+          <p className="text-muted-foreground text-sm">Organization settings and management</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={handleSeed} disabled={seeding}>
+          <Database className="h-4 w-4 mr-1.5" />{seeding ? "Seeding..." : "Seed German defaults"}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
