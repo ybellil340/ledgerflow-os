@@ -24,7 +24,7 @@ export default function ExpensesPage() {
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "" });
+  const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -87,14 +87,14 @@ export default function ExpensesPage() {
         org_id: orgId!, submitter_id: user!.id, title: form.title,
         description: form.description || null, amount: parseFloat(form.amount),
         expense_date: form.expense_date, category_id: form.category_id || null,
-        receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
+        currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       setOpen(false);
-      setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "" });
+      setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
       setReceiptFile(null);
       toast({ title: "Expense submitted" });
     },
@@ -150,10 +150,21 @@ export default function ExpensesPage() {
                   <Label>Title *</Label>
                   <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Amount (€) *</Label>
+                    <Label>Amount *</Label>
                     <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Currency *</Label>
+                    <Select value={form.currency} onValueChange={(v) => setForm({ ...form, currency: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR", "BRL", "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "TRY", "AED", "SAR", "SGD", "HKD", "NZD", "MXN", "ZAR", "KRW"].map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Date *</Label>
