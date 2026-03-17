@@ -145,8 +145,7 @@ export default function WalletsPage() {
       setAddFundsOpen(false);
       setAddFundsAmount("");
       setAddFundsWalletId(null);
-      const isPrimary = addFundsWalletId === primaryWallet?.id;
-      toast({ title: isPrimary ? "Funds recorded" : "Funds transferred" });
+      toast({ title: "Funds transferred" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
