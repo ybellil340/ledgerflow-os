@@ -153,33 +153,50 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
 
       const result = data?.data;
       if (result) {
-        // Auto-fill fields from OCR
+        // Auto-fill local fields from OCR
         if (result.vat_amount != null) setVatAmount(result.vat_amount.toString());
         if (result.vat_rate != null) setVatRate(result.vat_rate.toString());
         if (result.tax_registration_number) setTrn(result.tax_registration_number);
+        if (result.description) setEditDescription(result.description);
 
         // Match category by suggestion
+        let matchedCategoryId: string | null = null;
         if (result.category_suggestion) {
           const match = categories.find((c: any) =>
             c.name.toLowerCase().includes(result.category_suggestion.toLowerCase()) ||
             result.category_suggestion.toLowerCase().includes(c.name.toLowerCase())
           );
-          if (match) setCategoryId(match.id);
+          if (match) {
+            setCategoryId(match.id);
+            matchedCategoryId = match.id;
+          }
         }
 
-        // Save OCR results to DB
-        await updateExpense.mutateAsync({
-          vat_amount: result.vat_amount || 0,
-          vat_rate: result.vat_rate || 0,
+        // Save ALL OCR results to DB including amount, description, date
+        const dbUpdates: Record<string, any> = {
+          vat_amount: result.vat_amount ?? 0,
+          vat_rate: result.vat_rate ?? 0,
           tax_registration_number: result.tax_registration_number || null,
-          ...(result.category_suggestion && categories.find((c: any) =>
-            c.name.toLowerCase().includes(result.category_suggestion.toLowerCase())
-          ) ? { category_id: categories.find((c: any) =>
-            c.name.toLowerCase().includes(result.category_suggestion.toLowerCase())
-          )!.id } : {}),
-        });
+        };
+        if (result.description) dbUpdates.description = result.description;
+        if (result.amount != null && result.amount > 0) {
+          dbUpdates.amount = result.amount;
+          setEditAmount(result.amount.toString());
+        }
+        if (result.date) {
+          dbUpdates.expense_date = result.date;
+          setEditDate(result.date);
+        }
+        if (result.currency) dbUpdates.currency = result.currency;
+        if (matchedCategoryId) dbUpdates.category_id = matchedCategoryId;
 
-        toast({ title: "Receipt scanned", description: "Fields auto-filled from receipt" });
+        await updateExpense.mutateAsync(dbUpdates);
+
+        const parts = [];
+        if (result.vat_rate) parts.push(`VAT ${result.vat_rate}%`);
+        if (result.amount) parts.push(`Amount ${result.amount}`);
+        if (result.merchant_name) parts.push(result.merchant_name);
+        toast({ title: "Receipt scanned", description: parts.length ? parts.join(" · ") : "Fields auto-filled from receipt" });
       }
     } catch (e: any) {
       toast({ title: "Scan failed", description: e.message, variant: "destructive" });
