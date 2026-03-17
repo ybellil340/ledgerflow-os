@@ -1,45 +1,22 @@
 import {
-  LayoutDashboard,
-  CreditCard,
-  Receipt,
-  RefreshCw,
-  FileText,
-  FileOutput,
-  PiggyBank,
-  Users,
-  Building2,
-  Calculator,
-  TrendingUp,
-  Briefcase,
-  BarChart3,
-  UserCog,
-  DollarSign,
-  Plug,
-  Bell,
-  Download,
-  Shield,
+  LayoutDashboard, CreditCard, Receipt, RefreshCw, FileText, FileOutput,
+  PiggyBank, Users, Building2, Calculator, TrendingUp, Briefcase,
+  BarChart3, UserCog, DollarSign, Plug, Bell, Download, Shield, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 
 const navSections = [
   {
     label: "OVERVIEW",
-    items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    ],
+    items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard }],
   },
   {
     label: "FINANCE",
@@ -80,9 +57,7 @@ const navSections = [
   },
   {
     label: "PLATFORM",
-    items: [
-      { title: "Admin", url: "/admin", icon: Shield },
-    ],
+    items: [{ title: "Admin", url: "/admin", icon: Shield }],
   },
 ];
 
@@ -90,20 +65,22 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { signOut } = useAuth();
+  const { organization } = useOrganization();
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary/20 flex items-center justify-center shrink-0">
-            <BarChart3 className="w-4 h-4 text-sidebar-primary" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded bg-sidebar-primary/20 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-3.5 h-3.5 text-sidebar-primary" />
           </div>
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <span className="font-display text-base font-semibold text-sidebar-accent-foreground">
-                LedgerFlow
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-semibold text-sidebar-accent-foreground truncate">
+                {organization?.name || "LedgerFlow"}
               </span>
-              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-sidebar-primary/20 text-sidebar-primary uppercase tracking-wider">
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-sidebar-primary/20 text-sidebar-primary uppercase tracking-wider shrink-0">
                 DE
               </span>
             </div>
@@ -111,11 +88,11 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-2 overflow-y-auto">
         {navSections.map((section) => (
-          <SidebarGroup key={section.label}>
+          <SidebarGroup key={section.label} className="pb-1">
             {!collapsed && (
-              <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.1em] text-sidebar-foreground/40 uppercase px-3 mb-1">
+              <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/40 uppercase px-3 mb-0.5">
                 {section.label}
               </SidebarGroupLabel>
             )}
@@ -125,15 +102,11 @@ export function AppSidebar() {
                   const isActive = location.pathname === item.url;
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={collapsed ? item.title : undefined}
-                      >
+                      <SidebarMenuButton asChild isActive={isActive} tooltip={collapsed ? item.title : undefined}>
                         <NavLink
                           to={item.url}
                           end
-                          className="transition-colors duration-150"
+                          className="text-sm"
                           activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                         >
                           <item.icon className="h-4 w-4 shrink-0" />
@@ -148,6 +121,17 @@ export function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
+
+      <SidebarFooter className="p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={signOut} tooltip={collapsed ? "Sign out" : undefined}>
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="text-sm">Sign out</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
