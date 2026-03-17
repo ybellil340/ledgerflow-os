@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Building2, Activity } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { seedGermanDefaults } from "@/lib/seedData";
+import { Shield, Users, Building2, Activity, Database } from "lucide-react";
 
 export default function AdminPage() {
   const { orgId, role, organization } = useOrganization();
