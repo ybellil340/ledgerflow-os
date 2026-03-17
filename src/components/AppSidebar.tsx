@@ -21,6 +21,7 @@ const navSections = [
   {
     label: "FINANCE",
     items: [
+      { title: "Wallets", url: "/wallets", icon: Wallet },
       { title: "Cards", url: "/cards", icon: CreditCard },
       { title: "Expenses", url: "/expenses", icon: Receipt },
       { title: "Reimbursements", url: "/reimbursements", icon: RefreshCw },
