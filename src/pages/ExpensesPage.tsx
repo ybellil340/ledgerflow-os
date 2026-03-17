@@ -344,7 +344,10 @@ export default function ExpensesPage() {
         <DialogContent className="max-w-[900px] p-0 overflow-hidden">
           <DialogHeader className="sr-only"><DialogTitle>Expense details</DialogTitle></DialogHeader>
           {selectedExpense && (
-            <ExpenseDetailView expense={selectedExpense} onClose={() => setDetailOpen(false)} />
+            <ExpenseDetailView
+              expense={allExpenses.find((e: any) => e.id === selectedExpense.id) || selectedExpense}
+              onClose={() => setDetailOpen(false)}
+            />
           )}
         </DialogContent>
       </Dialog>
