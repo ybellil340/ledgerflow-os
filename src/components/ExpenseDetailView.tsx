@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Upload, Loader2, ChevronUp, ChevronDown, ScanLine, Pencil, RotateCcw } from "lucide-react";
+import { Check, X, Upload, Loader2, ChevronUp, ChevronDown, ScanLine, Pencil, RotateCcw, ExternalLink, Download } from "lucide-react";
 import PdfPreview from "@/components/PdfPreview";
 
 interface ExpenseDetailViewProps {
