@@ -119,12 +119,18 @@ export default function CardsPage() {
   const createCard = useMutation({
     mutationFn: async () => {
       const lastFour = String(Math.floor(1000 + Math.random() * 9000));
+      const fullNumber = String(Math.floor(1000 + Math.random() * 9000)) + String(Math.floor(1000 + Math.random() * 9000)) + String(Math.floor(1000 + Math.random() * 9000)) + lastFour;
+      const cvv = String(Math.floor(100 + Math.random() * 900));
+      const expMonth = new Date().getMonth() + 1;
+      const expYear = new Date().getFullYear() + 3;
       const { error } = await supabase.from("cards").insert({
         org_id: orgId!, holder_id: form.holder_id || user!.id, card_name: form.card_name,
         last_four: lastFour, card_type: form.card_type,
         spending_limit: parseFloat(form.spending_limit),
         wallet_id: form.wallet_id || null, spend_period: form.spend_period,
         allowed_category_ids: form.allowed_category_ids.length > 0 ? form.allowed_category_ids : [],
+        card_number_encrypted: fullNumber, cvv_encrypted: cvv,
+        expiry_month: expMonth, expiry_year: expYear,
       });
       if (error) throw error;
     },
