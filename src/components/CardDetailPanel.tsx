@@ -59,6 +59,16 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
     enabled: !!orgId && editing,
   });
 
+  const { data: wallets = [] } = useQuery({
+    queryKey: ["wallets", orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("wallets").select("*").eq("org_id", orgId!).order("is_primary", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId && editing,
+  });
+
   useEffect(() => {
     if (card && editing) {
       setEditName(card.card_name || "");
