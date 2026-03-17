@@ -6,10 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Upload, Loader2, ChevronUp, ChevronDown, ScanLine } from "lucide-react";
+import { Check, X, Upload, Loader2, ChevronUp, ChevronDown, ScanLine, Pencil, RotateCcw } from "lucide-react";
 
 interface ExpenseDetailViewProps {
   expense: any;
@@ -26,6 +27,16 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
   const [accountingOpen, setAccountingOpen] = useState(true);
   const [taxOpen, setTaxOpen] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const isRejected = expense.status === "rejected";
+  const isOwner = user?.id === expense.submitter_id;
+  const canEdit = isOwner && (expense.status === "draft" || isRejected);
+  const [editing, setEditing] = useState(false);
+
+  // Editable core fields (for resubmit)
+  const [editTitle, setEditTitle] = useState(expense.title);
+  const [editAmount, setEditAmount] = useState(expense.amount?.toString() || "");
+  const [editDate, setEditDate] = useState(expense.expense_date || "");
+  const [editDescription, setEditDescription] = useState(expense.description || "");
 
   // Editable fields
   const [categoryId, setCategoryId] = useState(expense.category_id || "");
@@ -80,6 +91,34 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       onClose();
       toast({ title: "Expense updated" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const resubmitExpense = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("expenses").update({
+        title: editTitle,
+        amount: parseFloat(editAmount),
+        expense_date: editDate,
+        description: editDescription || null,
+        category_id: categoryId || null,
+        cost_center_id: costCenterId || null,
+        vat_amount: parseFloat(vatAmount) || 0,
+        vat_rate: parseFloat(vatRate) || 0,
+        tax_registration_number: trn || null,
+        status: "submitted" as any,
+        submitted_at: new Date().toISOString(),
+        rejection_reason: null,
+        rejected_at: null,
+        approver_id: null,
+      }).eq("id", expense.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      onClose();
+      toast({ title: "Expense resubmitted for approval" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -203,33 +242,62 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
       <div className="w-[380px] flex-shrink-0 overflow-y-auto">
         {/* Header: merchant + amount */}
         <div className="p-5 border-b border-border">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-base">{expense.title}</h3>
-              {expense.expense_categories?.name && (
-                <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
-              )}
-            </div>
-            <p className="text-lg font-bold">
-              {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between mt-4 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Expense Date</p>
-              <p className="font-medium">
-                {new Date(expense.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+          {isRejected && isOwner && (
+            <div className="mb-3 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-xs font-medium text-destructive flex items-center gap-1.5">
+                <X className="h-3.5 w-3.5" /> Rejected{expense.rejection_reason ? `: ${expense.rejection_reason}` : ""}
               </p>
             </div>
-            <StatusBadge status={expense.status} />
-          </div>
-
-          {expense.description && (
-            <p className="text-sm text-muted-foreground mt-3">{expense.description}</p>
           )}
-          {expense.rejection_reason && (
-            <p className="text-sm text-destructive mt-2">Rejected: {expense.rejection_reason}</p>
+          {editing ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Title</Label>
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Amount (€)</Label>
+                  <Input type="number" step="0.01" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Date</Label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-9 text-sm" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Description</Label>
+                <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} className="text-sm" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-base">{expense.title}</h3>
+                  {expense.expense_categories?.name && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
+                  )}
+                </div>
+                <p className="text-lg font-bold">
+                  {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between mt-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Expense Date</p>
+                  <p className="font-medium">
+                    {new Date(expense.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <StatusBadge status={expense.status} />
+              </div>
+
+              {expense.description && (
+                <p className="text-sm text-muted-foreground mt-3">{expense.description}</p>
+              )}
+            </>
           )}
         </div>
 
@@ -340,17 +408,52 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
           )}
         </div>
 
-        {/* Save & Action buttons */}
         <div className="border-t border-border p-5 space-y-3">
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={handleSaveAccountingFields}
-            disabled={updateExpense.isPending}
-          >
-            {updateExpense.isPending ? "Saving..." : "Save fields"}
-          </Button>
+          {canEdit && !editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-1.5"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              {isRejected ? "Edit & Resubmit" : "Edit expense"}
+            </Button>
+          )}
+
+          {editing && (
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 gap-1.5"
+                size="sm"
+                onClick={() => resubmitExpense.mutate()}
+                disabled={resubmitExpense.isPending || !editTitle || !editAmount}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {resubmitExpense.isPending ? "Submitting..." : "Resubmit"}
+              </Button>
+              <Button
+                className="flex-1"
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {!editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={handleSaveAccountingFields}
+              disabled={updateExpense.isPending}
+            >
+              {updateExpense.isPending ? "Saving..." : "Save fields"}
+            </Button>
+          )}
 
           {isApprover && expense.status === "submitted" && (
             <div className="flex gap-2">
