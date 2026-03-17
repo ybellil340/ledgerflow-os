@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle } from "lucide-react";
+import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpenseDetailView from "@/components/ExpenseDetailView";
 
@@ -258,6 +258,38 @@ export default function ExpensesPage() {
           </Dialog>
         }
       />
+
+      {/* Missing receipt warning banner */}
+      {(() => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const missing = allExpenses.filter(
+          (e: any) => !e.receipt_url && new Date(e.created_at) < sevenDaysAgo && e.status !== "draft"
+        );
+        if (missing.length === 0) return null;
+        return (
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3.5">
+            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {missing.length} expense{missing.length > 1 ? "s" : ""} missing receipt{missing.length > 1 ? "s" : ""}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} — older than 7 days without a receipt attached.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto flex-shrink-0 text-xs h-7"
+              onClick={() => { setActiveTab("all"); setSearch(""); }}
+            >
+              View all
+            </Button>
+          </div>
+        );
+      })()}
 
       <div className="mt-4">
         <DataTable
