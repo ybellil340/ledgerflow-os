@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
+import { CardDetailPanel } from "@/components/CardDetailPanel";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, CreditCard } from "lucide-react";
 
@@ -22,6 +23,7 @@ export default function CardsPage() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [selectedCard, setSelectedCard] = useState<any>(null);
   const isAdmin = role === "company_admin";
 
   const [form, setForm] = useState({
@@ -117,12 +119,18 @@ export default function CardsPage() {
   const createCard = useMutation({
     mutationFn: async () => {
       const lastFour = String(Math.floor(1000 + Math.random() * 9000));
+      const fullNumber = String(Math.floor(1000 + Math.random() * 9000)) + String(Math.floor(1000 + Math.random() * 9000)) + String(Math.floor(1000 + Math.random() * 9000)) + lastFour;
+      const cvv = String(Math.floor(100 + Math.random() * 900));
+      const expMonth = new Date().getMonth() + 1;
+      const expYear = new Date().getFullYear() + 3;
       const { error } = await supabase.from("cards").insert({
         org_id: orgId!, holder_id: form.holder_id || user!.id, card_name: form.card_name,
         last_four: lastFour, card_type: form.card_type,
         spending_limit: parseFloat(form.spending_limit),
         wallet_id: form.wallet_id || null, spend_period: form.spend_period,
         allowed_category_ids: form.allowed_category_ids.length > 0 ? form.allowed_category_ids : [],
+        card_number_encrypted: fullNumber, cvv_encrypted: cvv,
+        expiry_month: expMonth, expiry_year: expYear,
       });
       if (error) throw error;
     },
@@ -218,7 +226,7 @@ export default function CardsPage() {
           emptyMessage="No cards found."
         >
           {cards.map((card: any) => (
-            <tr key={card.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+            <tr key={card.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedCard(card)}>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-6 rounded bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center">
@@ -257,6 +265,13 @@ export default function CardsPage() {
           </DataTable>
         </div>
       )}
+
+      <CardDetailPanel
+        card={selectedCard}
+        open={!!selectedCard}
+        onOpenChange={(v) => { if (!v) setSelectedCard(null); }}
+        getMemberName={getMemberName}
+      />
     </div>
   );
 }

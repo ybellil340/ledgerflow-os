@@ -346,9 +346,13 @@ export type Database = {
         Row: {
           allowed_category_ids: string[] | null
           card_name: string
+          card_number_encrypted: string | null
           card_type: string
           created_at: string
           currency: string
+          cvv_encrypted: string | null
+          expiry_month: number | null
+          expiry_year: number | null
           holder_id: string
           id: string
           last_four: string
@@ -362,9 +366,13 @@ export type Database = {
         Insert: {
           allowed_category_ids?: string[] | null
           card_name: string
+          card_number_encrypted?: string | null
           card_type?: string
           created_at?: string
           currency?: string
+          cvv_encrypted?: string | null
+          expiry_month?: number | null
+          expiry_year?: number | null
           holder_id: string
           id?: string
           last_four?: string
@@ -378,9 +386,13 @@ export type Database = {
         Update: {
           allowed_category_ids?: string[] | null
           card_name?: string
+          card_number_encrypted?: string | null
           card_type?: string
           created_at?: string
           currency?: string
+          cvv_encrypted?: string | null
+          expiry_month?: number | null
+          expiry_year?: number | null
           holder_id?: string
           id?: string
           last_four?: string
@@ -902,6 +914,7 @@ export type Database = {
           id: string
           last_name: string | null
           phone: string | null
+          pin_hash: string | null
           updated_at: string
           user_id: string
         }
@@ -912,6 +925,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          pin_hash?: string | null
           updated_at?: string
           user_id: string
         }
@@ -922,6 +936,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           phone?: string | null
+          pin_hash?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1218,6 +1233,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_card_details: {
+        Args: { _card_id: string; _pin: string }
+        Returns: {
+          card_number: string
+          cvv: string
+          expiry_month: number
+          expiry_year: number
+        }[]
+      }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
       has_org_role: {
         Args: {
@@ -1227,6 +1251,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_pin_set: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1238,6 +1263,8 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      set_user_pin: { Args: { _pin: string }; Returns: boolean }
+      verify_user_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       app_role:

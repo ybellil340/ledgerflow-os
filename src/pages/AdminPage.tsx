@@ -2,20 +2,33 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { seedGermanDefaults } from "@/lib/seedData";
-import { Shield, Users, Building2, Activity, Database } from "lucide-react";
+import { Shield, Users, Building2, Activity, Database, ShieldCheck } from "lucide-react";
+import { PinSetupDialog } from "@/components/PinSetupDialog";
 
 export default function AdminPage() {
   const { orgId, role, organization } = useOrganization();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [seeding, setSeeding] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const isAdmin = role === "company_admin" || role === "super_admin";
+
+  const { data: hasPin, refetch: refetchPin } = useQuery({
+    queryKey: ["has_pin", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("has_pin_set");
+      return !!data;
+    },
+    enabled: !!user,
+  });
 
   const handleSeed = async () => {
     if (!orgId) return;
@@ -89,6 +102,7 @@ export default function AdminPage() {
       <Tabs defaultValue="org" className="space-y-4">
         <TabsList>
           <TabsTrigger value="org">Organization</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="cost-centers">Cost Centers</TabsTrigger>
         </TabsList>
@@ -101,6 +115,27 @@ export default function AdminPage() {
               <div className="flex justify-between"><span className="text-sm text-muted-foreground">Tax ID</span><span className="text-sm">{organization?.tax_id || "—"}</span></div>
               <div className="flex justify-between"><span className="text-sm text-muted-foreground">Country</span><span className="text-sm">{organization?.country}</span></div>
               <div className="flex justify-between"><span className="text-sm text-muted-foreground">Currency</span><span className="text-sm">{organization?.currency}</span></div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Security PIN</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasPin ? "Your PIN is set. Use it to view sensitive card details." : "No PIN set. Set one to access card details."}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setPinDialogOpen(true)}>
+                  {hasPin ? "Change PIN" : "Set PIN"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -146,6 +181,13 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PinSetupDialog
+        open={pinDialogOpen}
+        onOpenChange={setPinDialogOpen}
+        isChange={!!hasPin}
+        onSuccess={() => refetchPin()}
+      />
     </div>
   );
 }
