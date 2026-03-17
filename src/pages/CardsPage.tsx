@@ -140,7 +140,7 @@ export default function CardsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       setOpen(false);
-      setForm({ card_name: "", holder_id: "", wallet_id: "", spending_limit: "5000", spend_period: "monthly", card_type: "virtual", allowed_category_ids: [] });
+      setForm({ card_name: "", holder_id: "", wallet_id: "", spending_limit: "5000", spend_period: "monthly", card_type: "virtual", allowed_category_ids: [], country_mode: "all", allowed_countries: [] });
       toast({ title: "Card issued" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
