@@ -415,6 +415,7 @@ export default function WalletsPage() {
         </DialogContent>
       </Dialog>
 
+      {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading wallets...</p>
       ) : wallets.length === 0 ? (
         <Card className="border-dashed">
