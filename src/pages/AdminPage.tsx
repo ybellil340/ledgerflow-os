@@ -14,10 +14,21 @@ import { PinSetupDialog } from "@/components/PinSetupDialog";
 
 export default function AdminPage() {
   const { orgId, role, organization } = useOrganization();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [seeding, setSeeding] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const isAdmin = role === "company_admin" || role === "super_admin";
+
+  const { data: hasPin, refetch: refetchPin } = useQuery({
+    queryKey: ["has_pin", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("has_pin_set");
+      return !!data;
+    },
+    enabled: !!user,
+  });
 
   const handleSeed = async () => {
     if (!orgId) return;
