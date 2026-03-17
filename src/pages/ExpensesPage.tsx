@@ -234,32 +234,12 @@ export default function ExpensesPage() {
         </DataTable>
       </div>
 
-      {/* Detail Dialog */}
+      {/* Alaan-style Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Expense details</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-[900px] p-0 overflow-hidden">
+          <DialogHeader className="sr-only"><DialogTitle>Expense details</DialogTitle></DialogHeader>
           {selectedExpense && (
-            <div className="space-y-3">
-              <div className="flex justify-between"><span className="text-sm text-muted-foreground">Title</span><span className="text-sm font-medium">{selectedExpense.title}</span></div>
-              <div className="flex justify-between"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-medium">{Number(selectedExpense.amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</span></div>
-              <div className="flex justify-between"><span className="text-sm text-muted-foreground">Date</span><span className="text-sm">{new Date(selectedExpense.expense_date).toLocaleDateString("de-DE")}</span></div>
-              <div className="flex justify-between"><span className="text-sm text-muted-foreground">Status</span><StatusBadge status={selectedExpense.status} /></div>
-              {selectedExpense.description && <div><span className="text-sm text-muted-foreground">Description</span><p className="text-sm mt-1">{selectedExpense.description}</p></div>}
-              {selectedExpense.rejection_reason && <div><span className="text-sm text-muted-foreground">Rejection reason</span><p className="text-sm mt-1 text-destructive">{selectedExpense.rejection_reason}</p></div>}
-              {selectedExpense.receipt_url && (
-                <a href={selectedExpense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">View receipt</a>
-              )}
-              {isApprover && selectedExpense.status === "submitted" && (
-                <div className="flex gap-2 pt-2">
-                  <Button className="flex-1" variant="outline" onClick={() => updateStatus.mutate({ id: selectedExpense.id, status: "approved" })}>
-                    <Check className="h-4 w-4 mr-1.5" />Approve
-                  </Button>
-                  <Button className="flex-1" variant="outline" onClick={() => updateStatus.mutate({ id: selectedExpense.id, status: "rejected", reason: "Rejected" })}>
-                    <X className="h-4 w-4 mr-1.5" />Reject
-                  </Button>
-                </div>
-              )}
-            </div>
+            <ExpenseDetailView expense={selectedExpense} onClose={() => setDetailOpen(false)} />
           )}
         </DialogContent>
       </Dialog>
