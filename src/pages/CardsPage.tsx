@@ -15,6 +15,25 @@ import { CardDetailPanel } from "@/components/CardDetailPanel";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, CreditCard } from "lucide-react";
 
+const COUNTRIES = [
+  { code: "DE", name: "Germany", flag: "🇩🇪" }, { code: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "CH", name: "Switzerland", flag: "🇨🇭" }, { code: "FR", name: "France", flag: "🇫🇷" },
+  { code: "NL", name: "Netherlands", flag: "🇳🇱" }, { code: "BE", name: "Belgium", flag: "🇧🇪" },
+  { code: "IT", name: "Italy", flag: "🇮🇹" }, { code: "ES", name: "Spain", flag: "🇪🇸" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" }, { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "IE", name: "Ireland", flag: "🇮🇪" }, { code: "SE", name: "Sweden", flag: "🇸🇪" },
+  { code: "NO", name: "Norway", flag: "🇳🇴" }, { code: "DK", name: "Denmark", flag: "🇩🇰" },
+  { code: "FI", name: "Finland", flag: "🇫🇮" }, { code: "PL", name: "Poland", flag: "🇵🇱" },
+  { code: "CZ", name: "Czech Republic", flag: "🇨🇿" }, { code: "US", name: "United States", flag: "🇺🇸" },
+  { code: "CA", name: "Canada", flag: "🇨🇦" }, { code: "AE", name: "UAE", flag: "🇦🇪" },
+  { code: "SG", name: "Singapore", flag: "🇸🇬" }, { code: "JP", name: "Japan", flag: "🇯🇵" },
+  { code: "AU", name: "Australia", flag: "🇦🇺" }, { code: "IN", name: "India", flag: "🇮🇳" },
+  { code: "BR", name: "Brazil", flag: "🇧🇷" }, { code: "CN", name: "China", flag: "🇨🇳" },
+  { code: "KR", name: "South Korea", flag: "🇰🇷" }, { code: "TR", name: "Turkey", flag: "🇹🇷" },
+  { code: "SA", name: "Saudi Arabia", flag: "🇸🇦" }, { code: "ZA", name: "South Africa", flag: "🇿🇦" },
+  { code: "MX", name: "Mexico", flag: "🇲🇽" },
+];
+
 export default function CardsPage() {
   const { orgId, role } = useOrganization();
   const { user } = useAuth();
@@ -30,6 +49,8 @@ export default function CardsPage() {
     card_name: "", holder_id: "", wallet_id: "", spending_limit: "5000",
     spend_period: "monthly" as "daily" | "monthly", card_type: "virtual",
     allowed_category_ids: [] as string[],
+    country_mode: "all" as "all" | "selected",
+    allowed_countries: [] as string[],
   });
 
   const { data: allCards = [], isLoading } = useQuery({
@@ -129,6 +150,7 @@ export default function CardsPage() {
         spending_limit: parseFloat(form.spending_limit),
         wallet_id: form.wallet_id || null, spend_period: form.spend_period,
         allowed_category_ids: form.allowed_category_ids.length > 0 ? form.allowed_category_ids : [],
+        allowed_countries: form.country_mode === "all" ? [] : form.allowed_countries,
         card_number_encrypted: fullNumber, cvv_encrypted: cvv,
         expiry_month: expMonth, expiry_year: expYear,
       });
@@ -137,7 +159,7 @@ export default function CardsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       setOpen(false);
-      setForm({ card_name: "", holder_id: "", wallet_id: "", spending_limit: "5000", spend_period: "monthly", card_type: "virtual", allowed_category_ids: [] });
+      setForm({ card_name: "", holder_id: "", wallet_id: "", spending_limit: "5000", spend_period: "monthly", card_type: "virtual", allowed_category_ids: [], country_mode: "all", allowed_countries: [] });
       toast({ title: "Card issued" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -205,6 +227,37 @@ export default function CardsPage() {
                           <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer">
                             <Checkbox checked={form.allowed_category_ids.includes(cat.id)} onCheckedChange={() => toggleCategory(cat.id)} />
                             {cat.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label>Country restrictions</Label>
+                    <Select value={form.country_mode} onValueChange={(v: "all" | "selected") => setForm({ ...form, country_mode: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All countries</SelectItem>
+                        <SelectItem value="selected">Selected countries only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.country_mode === "selected" && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Select allowed countries:</p>
+                      <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto border rounded-md p-3">
+                        {COUNTRIES.map((c) => (
+                          <label key={c.code} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox
+                              checked={form.allowed_countries.includes(c.code)}
+                              onCheckedChange={() => setForm(prev => ({
+                                ...prev,
+                                allowed_countries: prev.allowed_countries.includes(c.code)
+                                  ? prev.allowed_countries.filter(x => x !== c.code)
+                                  : [...prev.allowed_countries, c.code]
+                              }))}
+                            />
+                            <span className="truncate">{c.flag} {c.name}</span>
                           </label>
                         ))}
                       </div>
