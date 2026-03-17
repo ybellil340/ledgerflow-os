@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle } from "lucide-react";
+import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpenseDetailView from "@/components/ExpenseDetailView";
 
