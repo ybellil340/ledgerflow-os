@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Upload, Loader2, ChevronUp, ChevronDown, ScanLine, Pencil, RotateCcw } from "lucide-react";
+import { Check, X, Upload, Loader2, ChevronUp, ChevronDown, ScanLine, Pencil, RotateCcw, ExternalLink, Download } from "lucide-react";
 import PdfPreview from "@/components/PdfPreview";
 
 interface ExpenseDetailViewProps {
@@ -131,41 +131,72 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
     }
     setScanning(true);
     try {
-      const { data, error } = await supabase.functions.invoke("scan-receipt", {
-        body: { imageUrl: expense.receipt_url },
-      });
+      let body: Record<string, string> = {};
+      
+      // For PDFs, fetch and convert to base64 so the AI can read it
+      if (expense.receipt_url.toLowerCase().endsWith(".pdf")) {
+        const resp = await fetch(expense.receipt_url);
+        const blob = await resp.blob();
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        body = { imageBase64: base64 };
+      } else {
+        body = { imageUrl: expense.receipt_url };
+      }
+
+      const { data, error } = await supabase.functions.invoke("scan-receipt", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const result = data?.data;
       if (result) {
-        // Auto-fill fields from OCR
+        // Auto-fill local fields from OCR
         if (result.vat_amount != null) setVatAmount(result.vat_amount.toString());
         if (result.vat_rate != null) setVatRate(result.vat_rate.toString());
         if (result.tax_registration_number) setTrn(result.tax_registration_number);
+        if (result.description) setEditDescription(result.description);
 
         // Match category by suggestion
+        let matchedCategoryId: string | null = null;
         if (result.category_suggestion) {
           const match = categories.find((c: any) =>
             c.name.toLowerCase().includes(result.category_suggestion.toLowerCase()) ||
             result.category_suggestion.toLowerCase().includes(c.name.toLowerCase())
           );
-          if (match) setCategoryId(match.id);
+          if (match) {
+            setCategoryId(match.id);
+            matchedCategoryId = match.id;
+          }
         }
 
-        // Save OCR results to DB
-        await updateExpense.mutateAsync({
-          vat_amount: result.vat_amount || 0,
-          vat_rate: result.vat_rate || 0,
+        // Save ALL OCR results to DB including amount, description, date
+        const dbUpdates: Record<string, any> = {
+          vat_amount: result.vat_amount ?? 0,
+          vat_rate: result.vat_rate ?? 0,
           tax_registration_number: result.tax_registration_number || null,
-          ...(result.category_suggestion && categories.find((c: any) =>
-            c.name.toLowerCase().includes(result.category_suggestion.toLowerCase())
-          ) ? { category_id: categories.find((c: any) =>
-            c.name.toLowerCase().includes(result.category_suggestion.toLowerCase())
-          )!.id } : {}),
-        });
+        };
+        if (result.description) dbUpdates.description = result.description;
+        if (result.amount != null && result.amount > 0) {
+          dbUpdates.amount = result.amount;
+          setEditAmount(result.amount.toString());
+        }
+        if (result.date) {
+          dbUpdates.expense_date = result.date;
+          setEditDate(result.date);
+        }
+        if (result.currency) dbUpdates.currency = result.currency;
+        if (matchedCategoryId) dbUpdates.category_id = matchedCategoryId;
 
-        toast({ title: "Receipt scanned", description: "Fields auto-filled from receipt" });
+        await updateExpense.mutateAsync(dbUpdates);
+
+        const parts = [];
+        if (result.vat_rate) parts.push(`VAT ${result.vat_rate}%`);
+        if (result.amount) parts.push(`Amount ${result.amount}`);
+        if (result.merchant_name) parts.push(result.merchant_name);
+        toast({ title: "Receipt scanned", description: parts.length ? parts.join(" · ") : "Fields auto-filled from receipt" });
       }
     } catch (e: any) {
       toast({ title: "Scan failed", description: e.message, variant: "destructive" });
@@ -211,7 +242,17 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
                 className="max-w-full max-h-[calc(80vh-120px)] object-contain mx-auto rounded"
               />
             )}
-            <div className="flex items-center justify-center gap-2 mt-3">
+            <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" /> Open
+                </a>
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={expense.receipt_url} download>
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+              </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={handleScanReceipt} disabled={scanning}>
                 {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
                 {scanning ? "Scanning..." : "Scan receipt"}
