@@ -320,16 +320,26 @@ export default function WalletsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Funds Dialog (sub-wallets only) */}
+      {/* Add Funds Dialog (sub-wallets only, from any other wallet) */}
       <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Funds to {addFundsTargetWallet?.name}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); addFundsToWallet.mutate(); }} className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
-            </p>
+            <div className="space-y-1.5">
+              <Label>From wallet</Label>
+              <Select value={addFundsSourceId} onValueChange={setAddFundsSourceId}>
+                <SelectTrigger><SelectValue placeholder="Select source wallet" /></SelectTrigger>
+                <SelectContent>
+                  {wallets.filter((w: any) => w.id !== addFundsWalletId).map((w: any) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name} ({formatCurrency(w.balance)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label>Amount (€)</Label>
               <Input
@@ -339,10 +349,9 @@ export default function WalletsPage() {
                 value={addFundsAmount}
                 onChange={(e) => setAddFundsAmount(e.target.value)}
                 required
-                autoFocus
               />
             </div>
-            <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending}>
+            <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending || !addFundsSourceId}>
               {addFundsToWallet.isPending ? "Processing..." : "Transfer Funds"}
             </Button>
           </form>
