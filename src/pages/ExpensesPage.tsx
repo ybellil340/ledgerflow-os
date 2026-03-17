@@ -24,7 +24,7 @@ export default function ExpensesPage() {
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "" });
+  const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
