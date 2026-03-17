@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ArrowRightLeft, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark } from "lucide-react";
+import { Plus, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function WalletsPage() {
