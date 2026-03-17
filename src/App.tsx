@@ -49,6 +49,7 @@ const App = () => (
               <Route path="/seed" element={<SeedPage />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/wallets" element={<WalletsPage />} />
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/expenses" element={<ExpensesPage />} />
                 <Route path="/reimbursements" element={<ReimbursementsPage />} />
