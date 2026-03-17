@@ -1,0 +1,1 @@
+ALTER TABLE public.wallets ADD COLUMN low_funds_threshold numeric NOT NULL DEFAULT 100;

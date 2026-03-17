@@ -1191,6 +1191,7 @@ export type Database = {
           iban_display: string | null
           id: string
           is_primary: boolean
+          low_funds_threshold: number
           name: string
           org_id: string
           updated_at: string
@@ -1204,6 +1205,7 @@ export type Database = {
           iban_display?: string | null
           id?: string
           is_primary?: boolean
+          low_funds_threshold?: number
           name: string
           org_id: string
           updated_at?: string
@@ -1217,6 +1219,7 @@ export type Database = {
           iban_display?: string | null
           id?: string
           is_primary?: boolean
+          low_funds_threshold?: number
           name?: string
           org_id?: string
           updated_at?: string
