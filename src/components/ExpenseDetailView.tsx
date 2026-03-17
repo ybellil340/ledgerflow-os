@@ -26,6 +26,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
   const isApprover = role === "company_admin" || role === "finance_manager" || role === "approver";
 
   const [accountingOpen, setAccountingOpen] = useState(true);
+  const [editingAmount, setEditingAmount] = useState(false);
   const [taxOpen, setTaxOpen] = useState(true);
   const [scanning, setScanning] = useState(false);
   const isRejected = expense.status === "rejected";
