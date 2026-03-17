@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ArrowRightLeft, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark } from "lucide-react";
+import { Plus, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function WalletsPage() {
@@ -23,12 +22,11 @@ export default function WalletsPage() {
   const isAdmin = role === "company_admin";
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [transferOpen, setTransferOpen] = useState(false);
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
   const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "" });
-  const [transferForm, setTransferForm] = useState({ from_wallet_id: "", to_wallet_id: "", amount: "", note: "" });
+  const [addFundsSourceId, setAddFundsSourceId] = useState<string>("");
   const [addFundsAmount, setAddFundsAmount] = useState("");
   const [copiedIban, setCopiedIban] = useState(false);
 
@@ -108,19 +106,19 @@ export default function WalletsPage() {
 
   const addFundsToWallet = useMutation({
     mutationFn: async () => {
-      if (!addFundsWalletId || !primaryWallet) throw new Error("Missing wallet");
+      if (!addFundsWalletId || !addFundsSourceId) throw new Error("Missing wallet");
       const amount = parseFloat(addFundsAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
 
-      // Only sub-wallet funding allowed (from primary)
-      if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
+      const sourceWallet = wallets.find((w: any) => w.id === addFundsSourceId);
       const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
-      if (!targetWallet) throw new Error("Wallet not found");
+      if (!sourceWallet || !targetWallet) throw new Error("Wallet not found");
+      if (Number(sourceWallet.balance) < amount) throw new Error("Insufficient balance in source wallet");
 
       const { error: e1 } = await supabase
         .from("wallets")
-        .update({ balance: Number(primaryWallet.balance) - amount })
-        .eq("id", primaryWallet.id);
+        .update({ balance: Number(sourceWallet.balance) - amount })
+        .eq("id", sourceWallet.id);
       if (e1) throw e1;
 
       const { error: e2 } = await supabase
@@ -131,10 +129,10 @@ export default function WalletsPage() {
 
       const { error: e3 } = await supabase.from("wallet_transfers").insert({
         org_id: orgId!,
-        from_wallet_id: primaryWallet.id,
+        from_wallet_id: sourceWallet.id,
         to_wallet_id: targetWallet.id,
         amount,
-        note: `Fund ${targetWallet.name}`,
+        note: `Fund ${targetWallet.name} from ${sourceWallet.name}`,
         created_by: user!.id,
       });
       if (e3) throw e3;
@@ -145,47 +143,8 @@ export default function WalletsPage() {
       setAddFundsOpen(false);
       setAddFundsAmount("");
       setAddFundsWalletId(null);
+      setAddFundsSourceId("");
       toast({ title: "Funds transferred" });
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const transferFunds = useMutation({
-    mutationFn: async () => {
-      const amount = parseFloat(transferForm.amount);
-      if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
-      const fromW = wallets.find((w: any) => w.id === transferForm.from_wallet_id);
-      if (!fromW || Number(fromW.balance) < amount) throw new Error("Insufficient balance");
-
-      const { error: e1 } = await supabase
-        .from("wallets")
-        .update({ balance: Number(fromW.balance) - amount })
-        .eq("id", fromW.id);
-      if (e1) throw e1;
-
-      const toW = wallets.find((w: any) => w.id === transferForm.to_wallet_id);
-      const { error: e2 } = await supabase
-        .from("wallets")
-        .update({ balance: Number(toW!.balance) + amount })
-        .eq("id", toW!.id);
-      if (e2) throw e2;
-
-      const { error: e3 } = await supabase.from("wallet_transfers").insert({
-        org_id: orgId!,
-        from_wallet_id: fromW.id,
-        to_wallet_id: toW!.id,
-        amount,
-        note: transferForm.note || null,
-        created_by: user!.id,
-      });
-      if (e3) throw e3;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["wallets"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet_transfers"] });
-      setTransferOpen(false);
-      setTransferForm({ from_wallet_id: "", to_wallet_id: "", amount: "", note: "" });
-      toast({ title: "Transfer complete" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -200,6 +159,8 @@ export default function WalletsPage() {
 
   const openAddFunds = (walletId: string) => {
     setAddFundsWalletId(walletId);
+    // Default source to primary wallet if it exists
+    setAddFundsSourceId(primaryWallet?.id ?? "");
     setAddFundsAmount("");
     setAddFundsOpen(true);
   };
@@ -273,58 +234,6 @@ export default function WalletsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Wallets</h1>
         <div className="flex gap-2">
-          {isAdmin && wallets.length >= 2 && (
-            <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <ArrowRightLeft className="h-4 w-4 mr-1.5" />
-                  Transfer Funds
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Transfer funds</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); transferFunds.mutate(); }} className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label>From wallet</Label>
-                    <Select value={transferForm.from_wallet_id} onValueChange={(v) => setTransferForm({ ...transferForm, from_wallet_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger>
-                      <SelectContent>
-                        {wallets.map((w: any) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({formatCurrency(w.balance)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>To wallet</Label>
-                    <Select value={transferForm.to_wallet_id} onValueChange={(v) => setTransferForm({ ...transferForm, to_wallet_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
-                      <SelectContent>
-                        {wallets.filter((w: any) => w.id !== transferForm.from_wallet_id).map((w: any) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({formatCurrency(w.balance)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Amount (€)</Label>
-                    <Input type="number" step="0.01" min="0.01" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Note (optional)</Label>
-                    <Input value={transferForm.note} onChange={(e) => setTransferForm({ ...transferForm, note: e.target.value })} placeholder="e.g. March marketing budget" />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={transferFunds.isPending}>
-                    {transferFunds.isPending ? "Transferring..." : "Transfer funds"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
           {isAdmin && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
@@ -409,16 +318,26 @@ export default function WalletsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Funds Dialog (sub-wallets only) */}
+      {/* Add Funds Dialog (sub-wallets only, from any other wallet) */}
       <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Funds to {addFundsTargetWallet?.name}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); addFundsToWallet.mutate(); }} className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
-            </p>
+            <div className="space-y-1.5">
+              <Label>From wallet</Label>
+              <Select value={addFundsSourceId} onValueChange={setAddFundsSourceId}>
+                <SelectTrigger><SelectValue placeholder="Select source wallet" /></SelectTrigger>
+                <SelectContent>
+                  {wallets.filter((w: any) => w.id !== addFundsWalletId).map((w: any) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name} ({formatCurrency(w.balance)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label>Amount (€)</Label>
               <Input
@@ -428,10 +347,9 @@ export default function WalletsPage() {
                 value={addFundsAmount}
                 onChange={(e) => setAddFundsAmount(e.target.value)}
                 required
-                autoFocus
               />
             </div>
-            <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending}>
+            <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending || !addFundsSourceId}>
               {addFundsToWallet.isPending ? "Processing..." : "Transfer Funds"}
             </Button>
           </form>
