@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Check, X, Eye, Loader2, ScanLine } from "lucide-react";
+import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpenseDetailView from "@/components/ExpenseDetailView";
 
 export default function ExpensesPage() {
@@ -27,6 +28,7 @@ export default function ExpensesPage() {
   const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const isApprover = role === "company_admin" || role === "finance_manager" || role === "approver";
@@ -89,6 +91,9 @@ export default function ExpensesPage() {
         description: form.description || null, amount: parseFloat(form.amount),
         expense_date: form.expense_date, category_id: form.category_id || null,
         currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
+        vat_amount: ocrResult?.vat_amount || null,
+        vat_rate: ocrResult?.vat_rate || null,
+        tax_registration_number: ocrResult?.tax_registration_number || null,
       });
       if (error) throw error;
     },
@@ -97,6 +102,7 @@ export default function ExpensesPage() {
       setOpen(false);
       setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
       setReceiptFile(null);
+      setOcrResult(null);
       toast({ title: "Expense submitted" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -211,12 +217,12 @@ export default function ExpensesPage() {
                           if (data?.error) throw new Error(data.error);
                           const result = data?.data;
                           if (result) {
+                            setOcrResult(result);
                             setForm((prev) => ({
                               ...prev,
                               title: result.merchant_name || prev.title,
                               amount: result.amount != null ? result.amount.toString() : prev.amount,
                               currency: result.currency || prev.currency,
-                              date: result.date || prev.expense_date,
                               expense_date: result.date || prev.expense_date,
                               description: result.description || prev.description,
                               category_id: prev.category_id,
@@ -255,7 +261,7 @@ export default function ExpensesPage() {
 
       <div className="mt-4">
         <DataTable
-          headers={["Title", "Date", "Amount", "Category", "Status", "Action"]}
+          headers={["Title", "Date", "Amount", "Category", "Checks", "Status", ""]}
           isLoading={isLoading}
           isEmpty={expenses.length === 0}
           emptyMessage="No expenses found."
@@ -263,38 +269,73 @@ export default function ExpensesPage() {
           allChecked={expenses.length > 0 && selected.size === expenses.length}
           onCheckAll={(checked) => setSelected(checked ? new Set(expenses.map((e: any) => e.id)) : new Set())}
         >
-          {expenses.map((exp: any) => (
-            <tr key={exp.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-              <td className="w-10 px-4 py-3">
-                <input type="checkbox" checked={selected.has(exp.id)} onChange={() => toggleSelect(exp.id)} className="rounded border-border" />
-              </td>
-              <td className="px-4 py-3">
-                <p className="text-sm font-medium">{exp.title}</p>
-                {exp.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{exp.description}</p>}
-              </td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
-              <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</td>
-              <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "—"}</td>
-              <td className="px-4 py-3"><StatusBadge status={exp.status} /></td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-0.5">
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setSelectedExpense(exp); setDetailOpen(true); }}>
-                    <Eye className="h-3.5 w-3.5" />
-                  </Button>
-                  {isApprover && exp.status === "submitted" && (
-                    <>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success hover:text-success" onClick={() => updateStatus.mutate({ id: exp.id, status: "approved" })}>
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => updateStatus.mutate({ id: exp.id, status: "rejected", reason: "Rejected by approver" })}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
+          {expenses.map((exp: any) => {
+            const hasReceipt = !!exp.receipt_url;
+            const hasVat = exp.vat_amount > 0 || exp.vat_rate > 0;
+            const isApproved = exp.status === "approved" || exp.status === "reimbursed";
+            const isRejected = exp.status === "rejected";
+
+            return (
+              <tr key={exp.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                <td className="w-10 px-4 py-3">
+                  <input type="checkbox" checked={selected.has(exp.id)} onChange={() => toggleSelect(exp.id)} className="rounded border-border" />
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-sm font-medium">{exp.title}</p>
+                  {exp.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{exp.description}</p>}
+                </td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
+                <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "—"}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center ${hasReceipt ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                          <Receipt className="h-3 w-3" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">{hasReceipt ? "Receipt uploaded" : "No receipt"}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center ${hasVat ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                          <FileText className="h-3 w-3" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">{hasVat ? `VAT: ${exp.vat_rate}% (${Number(exp.vat_amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })})` : "No VAT data"}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center ${isApproved ? "bg-success/10 text-success" : isRejected ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                          {isApproved ? <CircleCheck className="h-3 w-3" /> : isRejected ? <CircleX className="h-3 w-3" /> : <CircleDashed className="h-3 w-3" />}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">{isApproved ? "Approved" : isRejected ? "Rejected" : "Pending approval"}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </td>
+                <td className="px-4 py-3"><StatusBadge status={exp.status} /></td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-0.5">
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setSelectedExpense(exp); setDetailOpen(true); }}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    {isApprover && exp.status === "submitted" && (
+                      <>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success hover:text-success" onClick={() => updateStatus.mutate({ id: exp.id, status: "approved" })}>
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => updateStatus.mutate({ id: exp.id, status: "rejected", reason: "Rejected by approver" })}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </DataTable>
       </div>
 
