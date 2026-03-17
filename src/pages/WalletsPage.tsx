@@ -391,7 +391,30 @@ export default function WalletsPage() {
         </DialogContent>
       </Dialog>
 
-      {isLoading ? (
+      {/* Manage Wallet Dialog */}
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Manage Wallet</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); updateWalletThreshold.mutate(); }} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Low funds warning (€)</Label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={manageThreshold}
+                onChange={(e) => setManageThreshold(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">A "Low Funds" badge will appear when the balance drops below this amount.</p>
+            </div>
+            <Button type="submit" className="w-full" disabled={updateWalletThreshold.isPending}>
+              {updateWalletThreshold.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
         <p className="text-sm text-muted-foreground">Loading wallets...</p>
       ) : wallets.length === 0 ? (
         <Card className="border-dashed">
