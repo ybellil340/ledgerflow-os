@@ -286,6 +286,10 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                   <span className="text-muted-foreground">Wallet</span>
                   <span>{card.wallets?.name || "—"}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Country restrictions</span>
+                  <span>{(!card.allowed_countries || card.allowed_countries.length === 0) ? "All countries" : `${card.allowed_countries.length} countries`}</span>
+                </div>
                 {card.allowed_category_ids && card.allowed_category_ids.length > 0 && (
                   <div className="text-sm">
                     <span className="text-muted-foreground">Allowed categories</span>
