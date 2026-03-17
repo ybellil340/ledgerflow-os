@@ -236,58 +236,6 @@ export default function WalletsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Wallets</h1>
         <div className="flex gap-2">
-          {isAdmin && wallets.length >= 2 && (
-            <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <ArrowRightLeft className="h-4 w-4 mr-1.5" />
-                  Transfer Funds
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Transfer funds</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); transferFunds.mutate(); }} className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label>From wallet</Label>
-                    <Select value={transferForm.from_wallet_id} onValueChange={(v) => setTransferForm({ ...transferForm, from_wallet_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger>
-                      <SelectContent>
-                        {wallets.map((w: any) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({formatCurrency(w.balance)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>To wallet</Label>
-                    <Select value={transferForm.to_wallet_id} onValueChange={(v) => setTransferForm({ ...transferForm, to_wallet_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
-                      <SelectContent>
-                        {wallets.filter((w: any) => w.id !== transferForm.from_wallet_id).map((w: any) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({formatCurrency(w.balance)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Amount (€)</Label>
-                    <Input type="number" step="0.01" min="0.01" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Note (optional)</Label>
-                    <Input value={transferForm.note} onChange={(e) => setTransferForm({ ...transferForm, note: e.target.value })} placeholder="e.g. March marketing budget" />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={transferFunds.isPending}>
-                    {transferFunds.isPending ? "Transferring..." : "Transfer funds"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
           {isAdmin && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
