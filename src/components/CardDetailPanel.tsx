@@ -320,6 +320,41 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                     </Select>
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Wallet</Label>
+                  <Select value={editWalletId} onValueChange={setEditWalletId}>
+                    <SelectTrigger><SelectValue placeholder="No wallet" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No wallet</SelectItem>
+                      {wallets.map((w: any) => (
+                        <SelectItem key={w.id} value={w.id}>{w.name} ({Number(w.balance).toLocaleString("de-DE", { style: "currency", currency: "EUR" })})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Country restrictions</Label>
+                  <Select value={countryMode} onValueChange={(v: "all" | "selected") => setCountryMode(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All countries</SelectItem>
+                      <SelectItem value="selected">Selected countries only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {countryMode === "selected" && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Select allowed countries:</p>
+                    <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto border rounded-md p-3 bg-background">
+                      {COUNTRIES.map((c) => (
+                        <label key={c.code} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox checked={editCountries.includes(c.code)} onCheckedChange={() => toggleCountry(c.code)} />
+                          <span className="truncate">{c.flag} {c.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {categories.length > 0 && (
                   <div className="space-y-2">
                     <Label>Allowed categories</Label>
