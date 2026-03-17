@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark } from "lucide-react";
+import { Plus, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark, Settings } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function WalletsPage() {
@@ -25,10 +25,13 @@ export default function WalletsPage() {
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
-  const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "" });
+  const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "", low_funds_threshold: "100" });
   const [addFundsSourceId, setAddFundsSourceId] = useState<string>("");
   const [addFundsAmount, setAddFundsAmount] = useState("");
   const [copiedIban, setCopiedIban] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageWalletId, setManageWalletId] = useState<string | null>(null);
+  const [manageThreshold, setManageThreshold] = useState("");
 
   const { data: wallets = [], isLoading } = useQuery({
     queryKey: ["wallets", orgId],
@@ -80,25 +83,27 @@ export default function WalletsPage() {
   const getActiveCardCount = (walletId: string) =>
     cards.filter((c: any) => c.wallet_id === walletId && c.status === "active").length;
 
-  const LOW_FUNDS_THRESHOLD = 100;
+      
 
   const createWallet = useMutation({
     mutationFn: async () => {
       const isPrimary = wallets.length === 0;
+      const threshold = parseFloat(walletForm.low_funds_threshold);
       const { error } = await supabase.from("wallets").insert({
         org_id: orgId!,
         name: isPrimary ? "Primary Wallet" : walletForm.name,
         is_primary: isPrimary,
         iban_display: isPrimary ? walletForm.iban_display || null : null,
         bic_display: isPrimary ? walletForm.bic_display || null : null,
+        low_funds_threshold: isNaN(threshold) ? 100 : threshold,
         created_by: user!.id,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
       setCreateOpen(false);
-      setWalletForm({ name: "", iban_display: "", bic_display: "" });
+      setWalletForm({ name: "", iban_display: "", bic_display: "", low_funds_threshold: "100" });
       toast({ title: "Wallet created" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -149,6 +154,31 @@ export default function WalletsPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const updateWalletThreshold = useMutation({
+    mutationFn: async () => {
+      if (!manageWalletId) throw new Error("No wallet selected");
+      const threshold = parseFloat(manageThreshold);
+      if (isNaN(threshold) || threshold < 0) throw new Error("Invalid threshold");
+      const { error } = await supabase
+        .from("wallets")
+        .update({ low_funds_threshold: threshold } as any)
+        .eq("id", manageWalletId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+      setManageOpen(false);
+      toast({ title: "Wallet updated" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const openManage = (wallet: any) => {
+    setManageWalletId(wallet.id);
+    setManageThreshold(String(wallet.low_funds_threshold ?? 100));
+    setManageOpen(true);
+  };
+
   const copyIban = () => {
     if (primaryWallet?.iban_display) {
       navigator.clipboard.writeText(primaryWallet.iban_display);
@@ -173,7 +203,7 @@ export default function WalletsPage() {
 
   const WalletTableRow = ({ wallet, showLowFunds = false }: { wallet: any; showLowFunds?: boolean }) => {
     const activeCards = getActiveCardCount(wallet.id);
-    const isLow = showLowFunds && Number(wallet.balance) < LOW_FUNDS_THRESHOLD;
+    const isLow = showLowFunds && Number(wallet.balance) < Number(wallet.low_funds_threshold ?? 100);
 
     return (
       <TableRow>
@@ -218,8 +248,8 @@ export default function WalletsPage() {
                   Add Funds
                 </Button>
               )}
-              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground">
-                Manage <ChevronRight className="h-3 w-3" />
+              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground" onClick={() => openManage(wallet)}>
+                <Settings className="h-3 w-3" /> Manage <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
           )}
@@ -263,6 +293,11 @@ export default function WalletsPage() {
                       <Input value={walletForm.name} onChange={(e) => setWalletForm({ ...walletForm, name: e.target.value })} required placeholder="e.g. Marketing, Petty Cash" />
                     </div>
                   )}
+                  <div className="space-y-1.5">
+                    <Label>Low funds warning (€)</Label>
+                    <Input type="number" step="1" min="0" value={walletForm.low_funds_threshold} onChange={(e) => setWalletForm({ ...walletForm, low_funds_threshold: e.target.value })} placeholder="100" />
+                    <p className="text-xs text-muted-foreground">You'll see a warning when the balance drops below this amount.</p>
+                  </div>
                   <Button type="submit" className="w-full" disabled={createWallet.isPending}>
                     {createWallet.isPending ? "Creating..." : isPrimarySetup ? "Create Primary Wallet" : "Create Wallet"}
                   </Button>
@@ -351,6 +386,30 @@ export default function WalletsPage() {
             </div>
             <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending || !addFundsSourceId}>
               {addFundsToWallet.isPending ? "Processing..." : "Transfer Funds"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Wallet Dialog */}
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Manage Wallet</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); updateWalletThreshold.mutate(); }} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Low funds warning (€)</Label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={manageThreshold}
+                onChange={(e) => setManageThreshold(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">A "Low Funds" badge will appear when the balance drops below this amount.</p>
+            </div>
+            <Button type="submit" className="w-full" disabled={updateWalletThreshold.isPending}>
+              {updateWalletThreshold.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </form>
         </DialogContent>
