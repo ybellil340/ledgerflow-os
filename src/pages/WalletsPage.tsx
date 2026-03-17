@@ -22,7 +22,6 @@ export default function WalletsPage() {
   const isAdmin = role === "company_admin";
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [transferOpen, setTransferOpen] = useState(false);
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
