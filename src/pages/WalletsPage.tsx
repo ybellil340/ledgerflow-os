@@ -206,7 +206,6 @@ export default function WalletsPage() {
 
   const isPrimarySetup = wallets.length === 0;
   const addFundsTargetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
-  const isPrimaryTopUp = addFundsWalletId === primaryWallet?.id;
 
   const formatCurrency = (amount: number) =>
     Number(amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
