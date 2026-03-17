@@ -31,24 +31,25 @@ export default function OnboardingPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { data: insertedOrgs, error: orgError } = await supabase
-        .from("organizations")
-        .insert({ name: companyName, legal_name: legalName || null, tax_id: taxId || null })
-        .select("id");
-      if (orgError) throw orgError;
+      const orgId = crypto.randomUUID();
 
-      const org = insertedOrgs?.[0];
-      if (!org?.id) {
-        throw new Error("Organization creation succeeded but no organization ID was returned.");
-      }
+      const { error: orgError } = await supabase
+        .from("organizations")
+        .insert({
+          id: orgId,
+          name: companyName,
+          legal_name: legalName || null,
+          tax_id: taxId || null,
+        });
+      if (orgError) throw orgError;
 
       const { error: memberError } = await supabase
         .from("org_members")
-        .insert({ org_id: org.id, user_id: user.id, role: "company_admin" as const });
+        .insert({ org_id: orgId, user_id: user.id, role: "company_admin" as const });
       if (memberError) throw memberError;
 
       await queryClient.invalidateQueries({ queryKey: ["org-membership", user.id] });
-      await queryClient.invalidateQueries({ queryKey: ["organization", org.id] });
+      await queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
 
       toast({ title: "Company created", description: `${companyName} is ready.` });
       navigate("/dashboard", { replace: true });
