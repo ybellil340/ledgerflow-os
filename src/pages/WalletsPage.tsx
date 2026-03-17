@@ -466,8 +466,28 @@ export default function WalletsPage() {
               {updateWalletThreshold.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </form>
+          {manageWalletId && !wallets.find((w: any) => w.id === manageWalletId)?.is_primary && (
+            <div className="border-t pt-4 mt-2">
+              <p className="text-xs text-muted-foreground mb-2">Deleting this wallet will transfer any remaining funds back to the Primary Wallet.</p>
+              <Button variant="destructive" size="sm" className="w-full" onClick={() => startDeleteWallet(manageWalletId)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete Wallet
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* PIN Dialog for wallet deletion */}
+      <PinDialog
+        open={deletePinOpen}
+        onOpenChange={setDeletePinOpen}
+        onSubmit={handleDeleteWithPin}
+        title="Confirm Wallet Deletion"
+        description="Enter your 4-digit PIN to delete this wallet. Any remaining balance will be transferred to the Primary Wallet."
+        loading={deleteLoading}
+        error={deletePinError}
+      />
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading wallets...</p>
