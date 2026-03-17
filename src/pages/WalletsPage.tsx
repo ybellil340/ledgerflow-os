@@ -161,6 +161,8 @@ export default function WalletsPage() {
 
   const openAddFunds = (walletId: string) => {
     setAddFundsWalletId(walletId);
+    // Default source to primary wallet if it exists
+    setAddFundsSourceId(primaryWallet?.id ?? "");
     setAddFundsAmount("");
     setAddFundsOpen(true);
   };
