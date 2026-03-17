@@ -259,6 +259,13 @@ export default function CardsPage() {
           </DataTable>
         </div>
       )}
+
+      <CardDetailPanel
+        card={selectedCard}
+        open={!!selectedCard}
+        onOpenChange={(v) => { if (!v) setSelectedCard(null); }}
+        getMemberName={getMemberName}
+      />
     </div>
   );
 }
