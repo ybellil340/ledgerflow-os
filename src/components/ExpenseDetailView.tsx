@@ -95,7 +95,35 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const handleScanReceipt = async () => {
+  const resubmitExpense = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("expenses").update({
+        title: editTitle,
+        amount: parseFloat(editAmount),
+        expense_date: editDate,
+        description: editDescription || null,
+        category_id: categoryId || null,
+        cost_center_id: costCenterId || null,
+        vat_amount: parseFloat(vatAmount) || 0,
+        vat_rate: parseFloat(vatRate) || 0,
+        tax_registration_number: trn || null,
+        status: "submitted" as any,
+        submitted_at: new Date().toISOString(),
+        rejection_reason: null,
+        rejected_at: null,
+        approver_id: null,
+      }).eq("id", expense.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      onClose();
+      toast({ title: "Expense resubmitted for approval" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+
     if (!expense.receipt_url) {
       toast({ title: "No receipt", description: "Upload a receipt first", variant: "destructive" });
       return;
