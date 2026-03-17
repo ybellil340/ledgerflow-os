@@ -154,6 +154,31 @@ export default function WalletsPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  const updateWalletThreshold = useMutation({
+    mutationFn: async () => {
+      if (!manageWalletId) throw new Error("No wallet selected");
+      const threshold = parseFloat(manageThreshold);
+      if (isNaN(threshold) || threshold < 0) throw new Error("Invalid threshold");
+      const { error } = await supabase
+        .from("wallets")
+        .update({ low_funds_threshold: threshold } as any)
+        .eq("id", manageWalletId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+      setManageOpen(false);
+      toast({ title: "Wallet updated" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const openManage = (wallet: any) => {
+    setManageWalletId(wallet.id);
+    setManageThreshold(String(wallet.low_funds_threshold ?? 100));
+    setManageOpen(true);
+  };
+
   const copyIban = () => {
     if (primaryWallet?.iban_display) {
       navigator.clipboard.writeText(primaryWallet.iban_display);
