@@ -203,18 +203,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
         {expense.receipt_url ? (
           <div className="w-full h-full flex flex-col">
             {expense.receipt_url.toLowerCase().endsWith(".pdf") ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                <div className="w-20 h-24 rounded-lg bg-muted border border-border flex flex-col items-center justify-center">
-                  <span className="text-2xl">📄</span>
-                  <span className="text-[10px] font-medium text-muted-foreground mt-1">PDF</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {expense.receipt_url.split("/").pop()?.substring(0, 40)}
-                </p>
-                <Button size="sm" variant="outline" asChild>
-                  <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer">Open PDF receipt</a>
-                </Button>
-              </div>
+              <PdfPreview url={expense.receipt_url} className="flex-1 overflow-y-auto" />
             ) : (
               <img
                 src={expense.receipt_url}
