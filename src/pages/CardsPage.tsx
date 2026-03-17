@@ -220,7 +220,7 @@ export default function CardsPage() {
           emptyMessage="No cards found."
         >
           {cards.map((card: any) => (
-            <tr key={card.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+            <tr key={card.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelectedCard(card)}>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-6 rounded bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center">
