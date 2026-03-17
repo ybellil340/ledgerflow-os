@@ -12,7 +12,23 @@ import { Shield, Users, Building2, Activity, Database } from "lucide-react";
 
 export default function AdminPage() {
   const { orgId, role, organization } = useOrganization();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [seeding, setSeeding] = useState(false);
   const isAdmin = role === "company_admin" || role === "super_admin";
+
+  const handleSeed = async () => {
+    if (!orgId) return;
+    setSeeding(true);
+    const result = await seedGermanDefaults(orgId);
+    toast({ title: result.success ? "Seed data created" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ["vat-codes"] });
+      queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["chart-of-accounts"] });
+    }
+    setSeeding(false);
+  };
 
   const { data: members = [] } = useQuery({
     queryKey: ["admin-members", orgId],
