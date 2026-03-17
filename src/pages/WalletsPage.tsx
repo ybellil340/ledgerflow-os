@@ -112,41 +112,32 @@ export default function WalletsPage() {
       const amount = parseFloat(addFundsAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
 
-      if (addFundsWalletId === primaryWallet.id) {
-        // Top up primary from bank transfer
-        const { error } = await supabase
-          .from("wallets")
-          .update({ balance: Number(primaryWallet.balance) + amount })
-          .eq("id", primaryWallet.id);
-        if (error) throw error;
-      } else {
-        // Transfer from primary to sub-wallet
-        if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
-        const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
-        if (!targetWallet) throw new Error("Wallet not found");
+      // Only sub-wallet funding allowed (from primary)
+      if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
+      const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
+      if (!targetWallet) throw new Error("Wallet not found");
 
-        const { error: e1 } = await supabase
-          .from("wallets")
-          .update({ balance: Number(primaryWallet.balance) - amount })
-          .eq("id", primaryWallet.id);
-        if (e1) throw e1;
+      const { error: e1 } = await supabase
+        .from("wallets")
+        .update({ balance: Number(primaryWallet.balance) - amount })
+        .eq("id", primaryWallet.id);
+      if (e1) throw e1;
 
-        const { error: e2 } = await supabase
-          .from("wallets")
-          .update({ balance: Number(targetWallet.balance) + amount })
-          .eq("id", targetWallet.id);
-        if (e2) throw e2;
+      const { error: e2 } = await supabase
+        .from("wallets")
+        .update({ balance: Number(targetWallet.balance) + amount })
+        .eq("id", targetWallet.id);
+      if (e2) throw e2;
 
-        const { error: e3 } = await supabase.from("wallet_transfers").insert({
-          org_id: orgId!,
-          from_wallet_id: primaryWallet.id,
-          to_wallet_id: targetWallet.id,
-          amount,
-          note: `Fund ${targetWallet.name}`,
-          created_by: user!.id,
-        });
-        if (e3) throw e3;
-      }
+      const { error: e3 } = await supabase.from("wallet_transfers").insert({
+        org_id: orgId!,
+        from_wallet_id: primaryWallet.id,
+        to_wallet_id: targetWallet.id,
+        amount,
+        note: `Fund ${targetWallet.name}`,
+        created_by: user!.id,
+      });
+      if (e3) throw e3;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
