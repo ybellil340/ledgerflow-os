@@ -23,6 +23,7 @@ export default function CardsPage() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [selectedCard, setSelectedCard] = useState<any>(null);
   const isAdmin = role === "company_admin";
 
   const [form, setForm] = useState({
