@@ -184,6 +184,55 @@ export default function WalletsPage() {
     setManageOpen(true);
   };
 
+  const startDeleteWallet = (walletId: string) => {
+    setDeleteWalletId(walletId);
+    setDeletePinError("");
+    setDeletePinOpen(true);
+  };
+
+  const handleDeleteWithPin = async (pin: string) => {
+    setDeleteLoading(true);
+    setDeletePinError("");
+    try {
+      const { data: valid } = await supabase.rpc("verify_user_pin", { _pin: pin });
+      if (!valid) {
+        setDeletePinError("Incorrect PIN");
+        setDeleteLoading(false);
+        return;
+      }
+
+      const wallet = wallets.find((w: any) => w.id === deleteWalletId);
+      if (!wallet || wallet.is_primary) throw new Error("Cannot delete this wallet");
+
+      const balance = Number(wallet.balance);
+      if (balance > 0 && primaryWallet) {
+        // Transfer remaining funds to primary
+        await supabase.from("wallets").update({ balance: Number(primaryWallet.balance) + balance }).eq("id", primaryWallet.id);
+        await supabase.from("wallet_transfers").insert({
+          org_id: orgId!,
+          from_wallet_id: wallet.id,
+          to_wallet_id: primaryWallet.id,
+          amount: balance,
+          note: `Auto-transfer on deletion of ${wallet.name}`,
+          created_by: user!.id,
+        });
+      }
+
+      const { error } = await supabase.from("wallets").delete().eq("id", wallet.id);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet_transfers"] });
+      setDeletePinOpen(false);
+      setManageOpen(false);
+      toast({ title: "Wallet deleted", description: balance > 0 ? `${formatCurrency(balance)} transferred to Primary Wallet.` : undefined });
+    } catch (e: any) {
+      setDeletePinError(e.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const copyIban = () => {
     if (primaryWallet?.iban_display) {
       navigator.clipboard.writeText(primaryWallet.iban_display);
