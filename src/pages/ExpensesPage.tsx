@@ -217,12 +217,12 @@ export default function ExpensesPage() {
                           if (data?.error) throw new Error(data.error);
                           const result = data?.data;
                           if (result) {
+                            setOcrResult(result);
                             setForm((prev) => ({
                               ...prev,
                               title: result.merchant_name || prev.title,
                               amount: result.amount != null ? result.amount.toString() : prev.amount,
                               currency: result.currency || prev.currency,
-                              date: result.date || prev.expense_date,
                               expense_date: result.date || prev.expense_date,
                               description: result.description || prev.description,
                               category_id: prev.category_id,
