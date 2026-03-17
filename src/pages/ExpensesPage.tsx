@@ -35,7 +35,7 @@ export default function ExpensesPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("expenses").select("*, expense_categories(name, code)").eq("org_id", orgId!).order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as any[];
     },
     enabled: !!orgId,
   });
