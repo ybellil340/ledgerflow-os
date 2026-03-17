@@ -45,6 +45,9 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
   const [editLimit, setEditLimit] = useState("");
   const [editPeriod, setEditPeriod] = useState<"daily" | "monthly">("monthly");
   const [editCategories, setEditCategories] = useState<string[]>([]);
+  const [editWalletId, setEditWalletId] = useState("");
+  const [countryMode, setCountryMode] = useState<"all" | "selected">("all");
+  const [editCountries, setEditCountries] = useState<string[]>([]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["expense_categories", orgId],
