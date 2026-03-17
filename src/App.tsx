@@ -10,16 +10,27 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./components/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
 import TeamPage from "./pages/TeamPage";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import ExpensesPage from "./pages/ExpensesPage";
+import ReimbursementsPage from "./pages/ReimbursementsPage";
+import APInvoicesPage from "./pages/APInvoicesPage";
+import ARInvoicesPage from "./pages/ARInvoicesPage";
+import SuppliersPage from "./pages/SuppliersPage";
+import CustomersPage from "./pages/CustomersPage";
+import AccountingPage from "./pages/AccountingPage";
+import CashFlowPage from "./pages/CashFlowPage";
+import TaxAdvisorPage from "./pages/TaxAdvisorPage";
+import ReportsPage from "./pages/ReportsPage";
+import CardsPage from "./pages/CardsPage";
+import BudgetsPage from "./pages/BudgetsPage";
+import BillingPage from "./pages/BillingPage";
+import IntegrationsPage from "./pages/IntegrationsPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import ImportDataPage from "./pages/ImportDataPage";
+import AdminPage from "./pages/AdminPage";
+import AuditLogPage from "./pages/AuditLogPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
-const stubRoutes = [
-  "cards", "expenses", "reimbursements", "ap-invoices", "ar-invoices", "budgets",
-  "suppliers", "customers", "accounting", "cash-flow", "tax-advisor", "reports",
-  "billing", "integrations", "notifications", "import-data", "admin",
-];
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -35,9 +46,24 @@ const App = () => (
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/team" element={<TeamPage />} />
-                {stubRoutes.map((r) => (
-                  <Route key={r} path={`/${r}`} element={<PlaceholderPage />} />
-                ))}
+                <Route path="/expenses" element={<ExpensesPage />} />
+                <Route path="/reimbursements" element={<ReimbursementsPage />} />
+                <Route path="/ap-invoices" element={<APInvoicesPage />} />
+                <Route path="/ar-invoices" element={<ARInvoicesPage />} />
+                <Route path="/suppliers" element={<SuppliersPage />} />
+                <Route path="/customers" element={<CustomersPage />} />
+                <Route path="/accounting" element={<AccountingPage />} />
+                <Route path="/cash-flow" element={<CashFlowPage />} />
+                <Route path="/tax-advisor" element={<TaxAdvisorPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/cards" element={<CardsPage />} />
+                <Route path="/budgets" element={<BudgetsPage />} />
+                <Route path="/billing" element={<BillingPage />} />
+                <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/import-data" element={<ImportDataPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/audit-log" element={<AuditLogPage />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
