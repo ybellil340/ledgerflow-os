@@ -181,6 +181,13 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PinSetupDialog
+        open={pinDialogOpen}
+        onOpenChange={setPinDialogOpen}
+        isChange={!!hasPin}
+        onSuccess={() => refetchPin()}
+      />
     </div>
   );
 }
