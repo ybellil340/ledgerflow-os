@@ -74,15 +74,118 @@ export default function AccountingPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const handleDatevExport = () => {
-    toast({ title: "DATEV Export", description: "DATEV export will be available in the next update." });
+  // DATEV Export
+  const [datevOpen, setDatevOpen] = useState(false);
+  const [datevFrom, setDatevFrom] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 1); d.setDate(1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [datevTo, setDatevTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [consultantNr, setConsultantNr] = useState("1234567");
+  const [clientNr, setClientNr] = useState("12345");
+  const [includeExpenses, setIncludeExpenses] = useState(true);
+  const [includeAP, setIncludeAP] = useState(true);
+  const [includeAR, setIncludeAR] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  const handleDatevExport = async () => {
+    if (!orgId) return;
+    setExporting(true);
+    try {
+      const bookings: DatevBooking[] = [];
+
+      if (includeExpenses) {
+        const { data } = await supabase
+          .from("expenses")
+          .select("*")
+          .eq("org_id", orgId)
+          .in("status", ["approved", "reimbursed"])
+          .gte("expense_date", datevFrom)
+          .lte("expense_date", datevTo);
+        if (data) bookings.push(...expensesToDatevBookings(data));
+      }
+
+      if (includeAP) {
+        const { data } = await supabase
+          .from("ap_invoices")
+          .select("*")
+          .eq("org_id", orgId)
+          .in("status", ["approved", "paid"])
+          .gte("issue_date", datevFrom)
+          .lte("issue_date", datevTo);
+        if (data) bookings.push(...apInvoicesToDatevBookings(data));
+      }
+
+      if (includeAR) {
+        const { data } = await supabase
+          .from("ar_invoices")
+          .select("*")
+          .eq("org_id", orgId)
+          .in("status", ["approved", "paid"])
+          .gte("issue_date", datevFrom)
+          .lte("issue_date", datevTo);
+        if (data) bookings.push(...arInvoicesToDatevBookings(data));
+      }
+
+      if (bookings.length === 0) {
+        toast({ title: "Keine Buchungen", description: "Im gewählten Zeitraum wurden keine Buchungen gefunden.", variant: "destructive" });
+        setExporting(false);
+        return;
+      }
+
+      const fiscalYear = new Date(datevFrom).getFullYear().toString();
+      const csv = generateDatevCSV({
+        consultantNumber: consultantNr,
+        clientNumber: clientNr,
+        fiscalYearStart: fiscalYear,
+        dateFrom: datevFrom.replace(/-/g, ""),
+        dateTo: datevTo.replace(/-/g, ""),
+        bookings,
+      });
+
+      const filename = `EXTF_Buchungsstapel_${datevFrom}_${datevTo}.csv`;
+      downloadCSV(csv, filename);
+      toast({ title: "DATEV Export", description: `${bookings.length} Buchungen exportiert.` });
+      setDatevOpen(false);
+    } catch (e: any) {
+      toast({ title: "Fehler", description: e.message, variant: "destructive" });
+    }
+    setExporting(false);
   };
 
   return (
     <div className="p-6 lg:p-8 max-w-[1200px]">
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-xl font-semibold">Accounting</h1><p className="text-muted-foreground text-sm">VAT codes, chart of accounts & DATEV export</p></div>
-        <Button size="sm" variant="outline" onClick={handleDatevExport}><Download className="h-4 w-4 mr-1.5" />DATEV Export</Button>
+        <Dialog open={datevOpen} onOpenChange={setDatevOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1.5" />DATEV Export</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>DATEV Buchungsstapel Export</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label>Von</Label><Input type="date" value={datevFrom} onChange={e => setDatevFrom(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Bis</Label><Input type="date" value={datevTo} onChange={e => setDatevTo(e.target.value)} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label>Beraternr.</Label><Input value={consultantNr} onChange={e => setConsultantNr(e.target.value)} placeholder="1234567" maxLength={7} /></div>
+                <div className="space-y-1.5"><Label>Mandantennr.</Label><Input value={clientNr} onChange={e => setClientNr(e.target.value)} placeholder="12345" maxLength={5} /></div>
+              </div>
+              <div className="space-y-2">
+                <Label>Daten einschließen</Label>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 text-sm"><Checkbox checked={includeExpenses} onCheckedChange={(v) => setIncludeExpenses(!!v)} />Ausgaben (genehmigte/erstattete)</label>
+                  <label className="flex items-center gap-2 text-sm"><Checkbox checked={includeAP} onCheckedChange={(v) => setIncludeAP(!!v)} />Eingangsrechnungen (genehmigt/bezahlt)</label>
+                  <label className="flex items-center gap-2 text-sm"><Checkbox checked={includeAR} onCheckedChange={(v) => setIncludeAR(!!v)} />Ausgangsrechnungen (genehmigt/bezahlt)</label>
+                </div>
+              </div>
+              <Button className="w-full" onClick={handleDatevExport} disabled={exporting || (!includeExpenses && !includeAP && !includeAR)}>
+                <Download className="h-4 w-4 mr-1.5" />{exporting ? "Exportiere..." : "CSV herunterladen"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Tabs defaultValue="vat" className="space-y-4">
