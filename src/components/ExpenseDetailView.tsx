@@ -211,7 +211,17 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
                 className="max-w-full max-h-[calc(80vh-120px)] object-contain mx-auto rounded"
               />
             )}
-            <div className="flex items-center justify-center gap-2 mt-3">
+            <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" /> Open
+                </a>
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={expense.receipt_url} download>
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+              </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={handleScanReceipt} disabled={scanning}>
                 {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanLine className="h-3.5 w-3.5" />}
                 {scanning ? "Scanning..." : "Scan receipt"}
