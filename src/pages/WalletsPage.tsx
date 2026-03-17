@@ -83,7 +83,7 @@ export default function WalletsPage() {
   const getActiveCardCount = (walletId: string) =>
     cards.filter((c: any) => c.wallet_id === walletId && c.status === "active").length;
 
-      // removed hardcoded threshold - now per-wallet
+      
 
   const createWallet = useMutation({
     mutationFn: async () => {
