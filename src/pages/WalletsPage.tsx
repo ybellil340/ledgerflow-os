@@ -88,14 +88,16 @@ export default function WalletsPage() {
   const createWallet = useMutation({
     mutationFn: async () => {
       const isPrimary = wallets.length === 0;
+      const threshold = parseFloat(walletForm.low_funds_threshold);
       const { error } = await supabase.from("wallets").insert({
         org_id: orgId!,
         name: isPrimary ? "Primary Wallet" : walletForm.name,
         is_primary: isPrimary,
         iban_display: isPrimary ? walletForm.iban_display || null : null,
         bic_display: isPrimary ? walletForm.bic_display || null : null,
+        low_funds_threshold: isNaN(threshold) ? 100 : threshold,
         created_by: user!.id,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
