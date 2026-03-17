@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark, Settings } from "lucide-react";
+import { Plus, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark, Settings, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PinDialog } from "@/components/PinDialog";
 
 export default function WalletsPage() {
   const { orgId, role } = useOrganization();
@@ -32,6 +33,10 @@ export default function WalletsPage() {
   const [manageOpen, setManageOpen] = useState(false);
   const [manageWalletId, setManageWalletId] = useState<string | null>(null);
   const [manageThreshold, setManageThreshold] = useState("");
+  const [deleteWalletId, setDeleteWalletId] = useState<string | null>(null);
+  const [deletePinOpen, setDeletePinOpen] = useState(false);
+  const [deletePinError, setDeletePinError] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { data: wallets = [], isLoading } = useQuery({
     queryKey: ["wallets", orgId],
@@ -177,6 +182,55 @@ export default function WalletsPage() {
     setManageWalletId(wallet.id);
     setManageThreshold(String(wallet.low_funds_threshold ?? 100));
     setManageOpen(true);
+  };
+
+  const startDeleteWallet = (walletId: string) => {
+    setDeleteWalletId(walletId);
+    setDeletePinError("");
+    setDeletePinOpen(true);
+  };
+
+  const handleDeleteWithPin = async (pin: string) => {
+    setDeleteLoading(true);
+    setDeletePinError("");
+    try {
+      const { data: valid } = await supabase.rpc("verify_user_pin", { _pin: pin });
+      if (!valid) {
+        setDeletePinError("Incorrect PIN");
+        setDeleteLoading(false);
+        return;
+      }
+
+      const wallet = wallets.find((w: any) => w.id === deleteWalletId);
+      if (!wallet || wallet.is_primary) throw new Error("Cannot delete this wallet");
+
+      const balance = Number(wallet.balance);
+      if (balance > 0 && primaryWallet) {
+        // Transfer remaining funds to primary
+        await supabase.from("wallets").update({ balance: Number(primaryWallet.balance) + balance }).eq("id", primaryWallet.id);
+        await supabase.from("wallet_transfers").insert({
+          org_id: orgId!,
+          from_wallet_id: wallet.id,
+          to_wallet_id: primaryWallet.id,
+          amount: balance,
+          note: `Auto-transfer on deletion of ${wallet.name}`,
+          created_by: user!.id,
+        });
+      }
+
+      const { error } = await supabase.from("wallets").delete().eq("id", wallet.id);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["wallets"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet_transfers"] });
+      setDeletePinOpen(false);
+      setManageOpen(false);
+      toast({ title: "Wallet deleted", description: balance > 0 ? `${formatCurrency(balance)} transferred to Primary Wallet.` : undefined });
+    } catch (e: any) {
+      setDeletePinError(e.message);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const copyIban = () => {
@@ -412,8 +466,28 @@ export default function WalletsPage() {
               {updateWalletThreshold.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </form>
+          {manageWalletId && !wallets.find((w: any) => w.id === manageWalletId)?.is_primary && (
+            <div className="border-t pt-4 mt-2">
+              <p className="text-xs text-muted-foreground mb-2">Deleting this wallet will transfer any remaining funds back to the Primary Wallet.</p>
+              <Button variant="destructive" size="sm" className="w-full" onClick={() => startDeleteWallet(manageWalletId)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete Wallet
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* PIN Dialog for wallet deletion */}
+      <PinDialog
+        open={deletePinOpen}
+        onOpenChange={setDeletePinOpen}
+        onSubmit={handleDeleteWithPin}
+        title="Confirm Wallet Deletion"
+        description="Enter your 4-digit PIN to delete this wallet. Any remaining balance will be transferred to the Primary Wallet."
+        loading={deleteLoading}
+        error={deletePinError}
+      />
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading wallets...</p>
