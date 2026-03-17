@@ -30,6 +30,8 @@ export default function CardsPage() {
     card_name: "", holder_id: "", wallet_id: "", spending_limit: "5000",
     spend_period: "monthly" as "daily" | "monthly", card_type: "virtual",
     allowed_category_ids: [] as string[],
+    country_mode: "all" as "all" | "selected",
+    allowed_countries: [] as string[],
   });
 
   const { data: allCards = [], isLoading } = useQuery({
