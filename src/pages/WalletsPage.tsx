@@ -248,8 +248,8 @@ export default function WalletsPage() {
                   Add Funds
                 </Button>
               )}
-              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground">
-                Manage <ChevronRight className="h-3 w-3" />
+              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground" onClick={() => openManage(wallet)}>
+                <Settings className="h-3 w-3" /> Manage <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
           )}
