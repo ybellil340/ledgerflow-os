@@ -417,7 +417,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
             <div className="px-5 pb-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">VAT Amount (€)</Label>
+                  <Label className="text-xs text-muted-foreground">VAT Amount ({expense.currency || "EUR"})</Label>
                   <Input
                     type="number"
                     step="0.01"
