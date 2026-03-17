@@ -408,17 +408,52 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
           )}
         </div>
 
-        {/* Save & Action buttons */}
         <div className="border-t border-border p-5 space-y-3">
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            onClick={handleSaveAccountingFields}
-            disabled={updateExpense.isPending}
-          >
-            {updateExpense.isPending ? "Saving..." : "Save fields"}
-          </Button>
+          {canEdit && !editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-1.5"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              {isRejected ? "Edit & Resubmit" : "Edit expense"}
+            </Button>
+          )}
+
+          {editing && (
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 gap-1.5"
+                size="sm"
+                onClick={() => resubmitExpense.mutate()}
+                disabled={resubmitExpense.isPending || !editTitle || !editAmount}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {resubmitExpense.isPending ? "Submitting..." : "Resubmit"}
+              </Button>
+              <Button
+                className="flex-1"
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {!editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={handleSaveAccountingFields}
+              disabled={updateExpense.isPending}
+            >
+              {updateExpense.isPending ? "Saving..." : "Save fields"}
+            </Button>
+          )}
 
           {isApprover && expense.status === "submitted" && (
             <div className="flex gap-2">
