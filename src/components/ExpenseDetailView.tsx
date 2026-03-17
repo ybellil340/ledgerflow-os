@@ -123,7 +123,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-
+  const handleScanReceipt = async () => {
     if (!expense.receipt_url) {
       toast({ title: "No receipt", description: "Upload a receipt first", variant: "destructive" });
       return;
