@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ArrowRightLeft, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle } from "lucide-react";
+import { Plus, ArrowRightLeft, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle, Landmark } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function WalletsPage() {
@@ -25,6 +25,7 @@ export default function WalletsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [addFundsOpen, setAddFundsOpen] = useState(false);
+  const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
   const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "" });
   const [transferForm, setTransferForm] = useState({ from_wallet_id: "", to_wallet_id: "", amount: "", note: "" });
@@ -111,41 +112,32 @@ export default function WalletsPage() {
       const amount = parseFloat(addFundsAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
 
-      if (addFundsWalletId === primaryWallet.id) {
-        // Top up primary from bank transfer
-        const { error } = await supabase
-          .from("wallets")
-          .update({ balance: Number(primaryWallet.balance) + amount })
-          .eq("id", primaryWallet.id);
-        if (error) throw error;
-      } else {
-        // Transfer from primary to sub-wallet
-        if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
-        const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
-        if (!targetWallet) throw new Error("Wallet not found");
+      // Only sub-wallet funding allowed (from primary)
+      if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
+      const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
+      if (!targetWallet) throw new Error("Wallet not found");
 
-        const { error: e1 } = await supabase
-          .from("wallets")
-          .update({ balance: Number(primaryWallet.balance) - amount })
-          .eq("id", primaryWallet.id);
-        if (e1) throw e1;
+      const { error: e1 } = await supabase
+        .from("wallets")
+        .update({ balance: Number(primaryWallet.balance) - amount })
+        .eq("id", primaryWallet.id);
+      if (e1) throw e1;
 
-        const { error: e2 } = await supabase
-          .from("wallets")
-          .update({ balance: Number(targetWallet.balance) + amount })
-          .eq("id", targetWallet.id);
-        if (e2) throw e2;
+      const { error: e2 } = await supabase
+        .from("wallets")
+        .update({ balance: Number(targetWallet.balance) + amount })
+        .eq("id", targetWallet.id);
+      if (e2) throw e2;
 
-        const { error: e3 } = await supabase.from("wallet_transfers").insert({
-          org_id: orgId!,
-          from_wallet_id: primaryWallet.id,
-          to_wallet_id: targetWallet.id,
-          amount,
-          note: `Fund ${targetWallet.name}`,
-          created_by: user!.id,
-        });
-        if (e3) throw e3;
-      }
+      const { error: e3 } = await supabase.from("wallet_transfers").insert({
+        org_id: orgId!,
+        from_wallet_id: primaryWallet.id,
+        to_wallet_id: targetWallet.id,
+        amount,
+        note: `Fund ${targetWallet.name}`,
+        created_by: user!.id,
+      });
+      if (e3) throw e3;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
@@ -153,8 +145,7 @@ export default function WalletsPage() {
       setAddFundsOpen(false);
       setAddFundsAmount("");
       setAddFundsWalletId(null);
-      const isPrimary = addFundsWalletId === primaryWallet?.id;
-      toast({ title: isPrimary ? "Funds recorded" : "Funds transferred" });
+      toast({ title: "Funds transferred" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -215,7 +206,6 @@ export default function WalletsPage() {
 
   const isPrimarySetup = wallets.length === 0;
   const addFundsTargetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
-  const isPrimaryTopUp = addFundsWalletId === primaryWallet?.id;
 
   const formatCurrency = (amount: number) =>
     Number(amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
@@ -246,15 +236,27 @@ export default function WalletsPage() {
         <TableCell>
           {isAdmin && (
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-7 gap-1 text-primary hover:text-primary"
-                onClick={() => openAddFunds(wallet.id)}
-              >
-                <Plus className="h-3 w-3" />
-                Add Funds
-              </Button>
+              {wallet.is_primary ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 gap-1 text-primary hover:text-primary"
+                  onClick={() => setBankDetailsOpen(true)}
+                >
+                  <Landmark className="h-3 w-3" />
+                  Bank Details
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 gap-1 text-primary hover:text-primary"
+                  onClick={() => openAddFunds(wallet.id)}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Funds
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground">
                 Manage <ChevronRight className="h-3 w-3" />
               </Button>
@@ -362,24 +364,61 @@ export default function WalletsPage() {
         </div>
       </div>
 
-      {/* Add Funds Dialog */}
+      {/* Bank Details Dialog for Primary Wallet */}
+      <Dialog open={bankDetailsOpen} onOpenChange={setBankDetailsOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Bank Transfer Details</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Transfer funds to the bank account below. Your primary wallet balance will update automatically once the transfer is received.
+            </p>
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">Account Name</span>
+                <span className="text-sm font-medium">Primary Wallet</span>
+              </div>
+              {primaryWallet?.iban_display && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">IBAN</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono font-medium">{primaryWallet.iban_display}</span>
+                    <button onClick={copyIban} className="text-muted-foreground hover:text-foreground">
+                      {copiedIban ? <CheckCircle className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {primaryWallet?.bic_display && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">BIC</span>
+                  <span className="text-sm font-mono font-medium">{primaryWallet.bic_display}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">Currency</span>
+                <span className="text-sm font-medium">EUR</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-800">
+                Funds typically arrive within 1–2 business days. You'll be notified once the transfer is received.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Funds Dialog (sub-wallets only) */}
       <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {isPrimaryTopUp ? "Record Incoming Transfer" : `Add Funds to ${addFundsTargetWallet?.name}`}
-            </DialogTitle>
+            <DialogTitle>Add Funds to {addFundsTargetWallet?.name}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); addFundsToWallet.mutate(); }} className="space-y-3">
-            {isPrimaryTopUp ? (
-              <p className="text-sm text-muted-foreground">
-                Record a bank transfer amount that arrived to your primary wallet.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
+            </p>
             <div className="space-y-1.5">
               <Label>Amount (€)</Label>
               <Input
@@ -393,7 +432,7 @@ export default function WalletsPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending}>
-              {addFundsToWallet.isPending ? "Processing..." : isPrimaryTopUp ? "Record Transfer" : "Transfer Funds"}
+              {addFundsToWallet.isPending ? "Processing..." : "Transfer Funds"}
             </Button>
           </form>
         </DialogContent>
