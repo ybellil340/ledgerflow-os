@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Upload, Check, X, Eye } from "lucide-react";
+import ExpenseDetailView from "@/components/ExpenseDetailView";
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
