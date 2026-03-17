@@ -150,10 +150,21 @@ export default function ExpensesPage() {
                   <Label>Title *</Label>
                   <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Amount (€) *</Label>
+                    <Label>Amount *</Label>
                     <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Currency *</Label>
+                    <Select value={form.currency} onValueChange={(v) => setForm({ ...form, currency: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR", "BRL", "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "TRY", "AED", "SAR", "SGD", "HKD", "NZD", "MXN", "ZAR", "KRW"].map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Date *</Label>
