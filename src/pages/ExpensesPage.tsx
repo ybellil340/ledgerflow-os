@@ -40,7 +40,7 @@ export default function ExpensesPage() {
     queryKey: ["expenses", orgId, statusFilter],
     queryFn: async () => {
       let q = supabase.from("expenses").select("*").eq("org_id", orgId!).order("created_at", { ascending: false });
-      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
       const { data, error } = await q;
       if (error) throw error;
       return data;

@@ -32,7 +32,7 @@ export default function ARInvoicesPage() {
     queryKey: ["ar-invoices", orgId, statusFilter],
     queryFn: async () => {
       let q = supabase.from("ar_invoices").select("*, customers(name)").eq("org_id", orgId!).order("created_at", { ascending: false });
-      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
       const { data, error } = await q;
       if (error) throw error;
       return data;

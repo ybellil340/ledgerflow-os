@@ -35,7 +35,7 @@ export default function APInvoicesPage() {
     queryKey: ["ap-invoices", orgId, statusFilter],
     queryFn: async () => {
       let q = supabase.from("ap_invoices").select("*, suppliers(name)").eq("org_id", orgId!).order("created_at", { ascending: false });
-      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
       const { data, error } = await q;
       if (error) throw error;
       return data;
