@@ -87,7 +87,7 @@ export default function ExpensesPage() {
         org_id: orgId!, submitter_id: user!.id, title: form.title,
         description: form.description || null, amount: parseFloat(form.amount),
         expense_date: form.expense_date, category_id: form.category_id || null,
-        receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
+        currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
       });
       if (error) throw error;
     },
