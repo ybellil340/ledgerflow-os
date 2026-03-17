@@ -365,24 +365,61 @@ export default function WalletsPage() {
         </div>
       </div>
 
-      {/* Add Funds Dialog */}
+      {/* Bank Details Dialog for Primary Wallet */}
+      <Dialog open={bankDetailsOpen} onOpenChange={setBankDetailsOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Bank Transfer Details</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Transfer funds to the bank account below. Your primary wallet balance will update automatically once the transfer is received.
+            </p>
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">Account Name</span>
+                <span className="text-sm font-medium">Primary Wallet</span>
+              </div>
+              {primaryWallet?.iban_display && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">IBAN</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono font-medium">{primaryWallet.iban_display}</span>
+                    <button onClick={copyIban} className="text-muted-foreground hover:text-foreground">
+                      {copiedIban ? <CheckCircle className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {primaryWallet?.bic_display && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">BIC</span>
+                  <span className="text-sm font-mono font-medium">{primaryWallet.bic_display}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">Currency</span>
+                <span className="text-sm font-medium">EUR</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-800">
+                Funds typically arrive within 1–2 business days. You'll be notified once the transfer is received.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Funds Dialog (sub-wallets only) */}
       <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {isPrimaryTopUp ? "Record Incoming Transfer" : `Add Funds to ${addFundsTargetWallet?.name}`}
-            </DialogTitle>
+            <DialogTitle>Add Funds to {addFundsTargetWallet?.name}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); addFundsToWallet.mutate(); }} className="space-y-3">
-            {isPrimaryTopUp ? (
-              <p className="text-sm text-muted-foreground">
-                Record a bank transfer amount that arrived to your primary wallet.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
+            </p>
             <div className="space-y-1.5">
               <Label>Amount (€)</Label>
               <Input
@@ -396,7 +433,7 @@ export default function WalletsPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending}>
-              {addFundsToWallet.isPending ? "Processing..." : isPrimaryTopUp ? "Record Transfer" : "Transfer Funds"}
+              {addFundsToWallet.isPending ? "Processing..." : "Transfer Funds"}
             </Button>
           </form>
         </DialogContent>
