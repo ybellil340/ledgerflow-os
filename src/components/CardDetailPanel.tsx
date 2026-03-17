@@ -152,6 +152,8 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
         spending_limit: parseFloat(editLimit),
         spend_period: editPeriod,
         allowed_category_ids: editCategories.length > 0 ? editCategories : [],
+        wallet_id: editWalletId === "none" ? null : editWalletId,
+        allowed_countries: countryMode === "all" ? [] : editCountries,
       }).eq("id", card.id);
       if (error) throw error;
     },
@@ -162,6 +164,11 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const toggleCountry = (code: string) => {
+    setEditCountries((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
 
   const toggleCategory = (catId: string) => {
     setEditCategories((prev) =>
