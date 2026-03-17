@@ -119,6 +119,27 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="security">
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Security PIN</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasPin ? "Your PIN is set. Use it to view sensitive card details." : "No PIN set. Set one to access card details."}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setPinDialogOpen(true)}>
+                  {hasPin ? "Change PIN" : "Set PIN"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="departments">
           <Card>
             <CardContent className="p-0">
