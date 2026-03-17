@@ -25,10 +25,13 @@ export default function WalletsPage() {
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
-  const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "" });
+  const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "", low_funds_threshold: "100" });
   const [addFundsSourceId, setAddFundsSourceId] = useState<string>("");
   const [addFundsAmount, setAddFundsAmount] = useState("");
   const [copiedIban, setCopiedIban] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageWalletId, setManageWalletId] = useState<string | null>(null);
+  const [manageThreshold, setManageThreshold] = useState("");
 
   const { data: wallets = [], isLoading } = useQuery({
     queryKey: ["wallets", orgId],
