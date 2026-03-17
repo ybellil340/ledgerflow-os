@@ -299,7 +299,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Amount (€)</Label>
+                  <Label className="text-xs text-muted-foreground">Amount</Label>
                   <Input type="number" step="0.01" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1.5">
@@ -321,9 +321,19 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
                     <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
                   )}
                 </div>
-                <p className="text-lg font-bold">
-                  {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
-                </p>
+                {canEdit ? (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="text-lg font-bold hover:underline decoration-dashed underline-offset-4 cursor-pointer"
+                    title="Click to edit"
+                  >
+                    {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
+                  </button>
+                ) : (
+                  <p className="text-lg font-bold">
+                    {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between mt-4 text-sm">
@@ -417,7 +427,7 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
             <div className="px-5 pb-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">VAT Amount ({expense.currency || "EUR"})</Label>
+                  <Label className="text-xs text-muted-foreground">VAT Amount</Label>
                   <Input
                     type="number"
                     step="0.01"
