@@ -33,6 +33,10 @@ export default function WalletsPage() {
   const [manageOpen, setManageOpen] = useState(false);
   const [manageWalletId, setManageWalletId] = useState<string | null>(null);
   const [manageThreshold, setManageThreshold] = useState("");
+  const [deleteWalletId, setDeleteWalletId] = useState<string | null>(null);
+  const [deletePinOpen, setDeletePinOpen] = useState(false);
+  const [deletePinError, setDeletePinError] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { data: wallets = [], isLoading } = useQuery({
     queryKey: ["wallets", orgId],
