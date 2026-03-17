@@ -131,9 +131,23 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
     }
     setScanning(true);
     try {
-      const { data, error } = await supabase.functions.invoke("scan-receipt", {
-        body: { imageUrl: expense.receipt_url },
-      });
+      let body: Record<string, string> = {};
+      
+      // For PDFs, fetch and convert to base64 so the AI can read it
+      if (expense.receipt_url.toLowerCase().endsWith(".pdf")) {
+        const resp = await fetch(expense.receipt_url);
+        const blob = await resp.blob();
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        body = { imageBase64: base64 };
+      } else {
+        body = { imageUrl: expense.receipt_url };
+      }
+
+      const { data, error } = await supabase.functions.invoke("scan-receipt", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
