@@ -91,6 +91,9 @@ export default function ExpensesPage() {
         description: form.description || null, amount: parseFloat(form.amount),
         expense_date: form.expense_date, category_id: form.category_id || null,
         currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
+        vat_amount: ocrResult?.vat_amount || null,
+        vat_rate: ocrResult?.vat_rate || null,
+        tax_registration_number: ocrResult?.tax_registration_number || null,
       });
       if (error) throw error;
     },
@@ -99,6 +102,7 @@ export default function ExpensesPage() {
       setOpen(false);
       setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
       setReceiptFile(null);
+      setOcrResult(null);
       toast({ title: "Expense submitted" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
