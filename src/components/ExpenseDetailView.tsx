@@ -322,18 +322,38 @@ export default function ExpenseDetailView({ expense, onClose }: ExpenseDetailVie
                     <p className="text-xs text-muted-foreground mt-0.5">{expense.expense_categories.name}</p>
                   )}
                 </div>
-                {canEdit ? (
+                {editingAmount ? (
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className="h-8 w-28 text-sm font-bold text-right"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateExpense.mutate({ amount: parseFloat(editAmount) });
+                          setEditingAmount(false);
+                        }
+                        if (e.key === "Escape") setEditingAmount(false);
+                      }}
+                    />
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
+                      updateExpense.mutate({ amount: parseFloat(editAmount) });
+                      setEditingAmount(false);
+                    }}>
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => setEditing(true)}
+                    onClick={() => { setEditAmount(expense.amount?.toString() || ""); setEditingAmount(true); }}
                     className="text-lg font-bold hover:underline decoration-dashed underline-offset-4 cursor-pointer"
-                    title="Click to edit"
+                    title="Click to edit amount"
                   >
                     {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
                   </button>
-                ) : (
-                  <p className="text-lg font-bold">
-                    {Number(expense.amount).toLocaleString("de-DE", { style: "currency", currency: expense.currency || "EUR" })}
-                  </p>
                 )}
               </div>
 
