@@ -3,15 +3,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Wallet, ArrowRightLeft, Copy, CheckCircle, Landmark } from "lucide-react";
+import { Plus, ArrowRightLeft, Copy, CheckCircle, Wallet, ChevronRight, AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function WalletsPage() {
   const { orgId, role } = useOrganization();
@@ -22,10 +24,11 @@ export default function WalletsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
-  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [addFundsOpen, setAddFundsOpen] = useState(false);
+  const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
   const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "" });
   const [transferForm, setTransferForm] = useState({ from_wallet_id: "", to_wallet_id: "", amount: "", note: "" });
-  const [topUpAmount, setTopUpAmount] = useState("");
+  const [addFundsAmount, setAddFundsAmount] = useState("");
   const [copiedIban, setCopiedIban] = useState(false);
 
   const { data: wallets = [], isLoading } = useQuery({
@@ -37,6 +40,19 @@ export default function WalletsPage() {
         .eq("org_id", orgId!)
         .order("is_primary", { ascending: false })
         .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: cards = [] } = useQuery({
+    queryKey: ["cards", orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cards")
+        .select("id, wallet_id, status")
+        .eq("org_id", orgId!);
       if (error) throw error;
       return data;
     },
@@ -60,6 +76,12 @@ export default function WalletsPage() {
 
   const primaryWallet = wallets.find((w: any) => w.is_primary);
   const subWallets = wallets.filter((w: any) => !w.is_primary);
+  const totalBalance = wallets.reduce((sum: number, w: any) => sum + Number(w.balance), 0);
+
+  const getActiveCardCount = (walletId: string) =>
+    cards.filter((c: any) => c.wallet_id === walletId && c.status === "active").length;
+
+  const LOW_FUNDS_THRESHOLD = 100;
 
   const createWallet = useMutation({
     mutationFn: async () => {
@@ -83,22 +105,56 @@ export default function WalletsPage() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const topUpPrimary = useMutation({
+  const addFundsToWallet = useMutation({
     mutationFn: async () => {
-      if (!primaryWallet) throw new Error("No primary wallet");
-      const amount = parseFloat(topUpAmount);
+      if (!addFundsWalletId || !primaryWallet) throw new Error("Missing wallet");
+      const amount = parseFloat(addFundsAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
-      const { error } = await supabase
-        .from("wallets")
-        .update({ balance: Number(primaryWallet.balance) + amount })
-        .eq("id", primaryWallet.id);
-      if (error) throw error;
+
+      if (addFundsWalletId === primaryWallet.id) {
+        // Top up primary from bank transfer
+        const { error } = await supabase
+          .from("wallets")
+          .update({ balance: Number(primaryWallet.balance) + amount })
+          .eq("id", primaryWallet.id);
+        if (error) throw error;
+      } else {
+        // Transfer from primary to sub-wallet
+        if (Number(primaryWallet.balance) < amount) throw new Error("Insufficient primary wallet balance");
+        const targetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
+        if (!targetWallet) throw new Error("Wallet not found");
+
+        const { error: e1 } = await supabase
+          .from("wallets")
+          .update({ balance: Number(primaryWallet.balance) - amount })
+          .eq("id", primaryWallet.id);
+        if (e1) throw e1;
+
+        const { error: e2 } = await supabase
+          .from("wallets")
+          .update({ balance: Number(targetWallet.balance) + amount })
+          .eq("id", targetWallet.id);
+        if (e2) throw e2;
+
+        const { error: e3 } = await supabase.from("wallet_transfers").insert({
+          org_id: orgId!,
+          from_wallet_id: primaryWallet.id,
+          to_wallet_id: targetWallet.id,
+          amount,
+          note: `Fund ${targetWallet.name}`,
+          created_by: user!.id,
+        });
+        if (e3) throw e3;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wallets"] });
-      setTopUpOpen(false);
-      setTopUpAmount("");
-      toast({ title: "Funds recorded", description: "Primary wallet balance updated." });
+      queryClient.invalidateQueries({ queryKey: ["wallet_transfers"] });
+      setAddFundsOpen(false);
+      setAddFundsAmount("");
+      setAddFundsWalletId(null);
+      const isPrimary = addFundsWalletId === primaryWallet?.id;
+      toast({ title: isPrimary ? "Funds recorded" : "Funds transferred" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -110,14 +166,12 @@ export default function WalletsPage() {
       const fromW = wallets.find((w: any) => w.id === transferForm.from_wallet_id);
       if (!fromW || Number(fromW.balance) < amount) throw new Error("Insufficient balance");
 
-      // Deduct from source
       const { error: e1 } = await supabase
         .from("wallets")
         .update({ balance: Number(fromW.balance) - amount })
         .eq("id", fromW.id);
       if (e1) throw e1;
 
-      // Add to target
       const toW = wallets.find((w: any) => w.id === transferForm.to_wallet_id);
       const { error: e2 } = await supabase
         .from("wallets")
@@ -125,7 +179,6 @@ export default function WalletsPage() {
         .eq("id", toW!.id);
       if (e2) throw e2;
 
-      // Log transfer
       const { error: e3 } = await supabase.from("wallet_transfers").insert({
         org_id: orgId!,
         from_wallet_id: fromW.id,
@@ -154,20 +207,77 @@ export default function WalletsPage() {
     }
   };
 
-  const isPrimary = wallets.length === 0;
+  const openAddFunds = (walletId: string) => {
+    setAddFundsWalletId(walletId);
+    setAddFundsAmount("");
+    setAddFundsOpen(true);
+  };
+
+  const isPrimarySetup = wallets.length === 0;
+  const addFundsTargetWallet = wallets.find((w: any) => w.id === addFundsWalletId);
+  const isPrimaryTopUp = addFundsWalletId === primaryWallet?.id;
+
+  const formatCurrency = (amount: number) =>
+    Number(amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+
+  const WalletTableRow = ({ wallet, showLowFunds = false }: { wallet: any; showLowFunds?: boolean }) => {
+    const activeCards = getActiveCardCount(wallet.id);
+    const isLow = showLowFunds && Number(wallet.balance) < LOW_FUNDS_THRESHOLD;
+
+    return (
+      <TableRow>
+        <TableCell>
+          <div>
+            <span className="font-medium text-sm">{wallet.name}</span>
+            {isLow && (
+              <Badge variant="destructive" className="ml-2 text-[10px] px-1.5 py-0">
+                Low Funds
+              </Badge>
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="text-sm">{formatCurrency(wallet.balance)}</TableCell>
+        <TableCell className="text-sm">{activeCards}</TableCell>
+        <TableCell>
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+            Active
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {isAdmin && (
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 gap-1 text-primary hover:text-primary"
+                onClick={() => openAddFunds(wallet.id)}
+              >
+                <Plus className="h-3 w-3" />
+                Add Funds
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-muted-foreground">
+                Manage <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px]">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold">Wallets</h1>
-          <p className="text-muted-foreground text-sm">Fund your primary wallet via bank transfer, then distribute across sub-wallets.</p>
-        </div>
+        <h1 className="text-xl font-semibold">Wallets</h1>
         <div className="flex gap-2">
-          {isAdmin && wallets.length >= 1 && (
+          {isAdmin && wallets.length >= 2 && (
             <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline"><ArrowRightLeft className="h-4 w-4 mr-1.5" />Transfer</Button>
+                <Button size="sm" variant="outline">
+                  <ArrowRightLeft className="h-4 w-4 mr-1.5" />
+                  Transfer Funds
+                </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Transfer funds</DialogTitle></DialogHeader>
@@ -179,7 +289,7 @@ export default function WalletsPage() {
                       <SelectContent>
                         {wallets.map((w: any) => (
                           <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({Number(w.balance).toLocaleString("de-DE", { style: "currency", currency: "EUR" })})
+                            {w.name} ({formatCurrency(w.balance)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -192,7 +302,7 @@ export default function WalletsPage() {
                       <SelectContent>
                         {wallets.filter((w: any) => w.id !== transferForm.from_wallet_id).map((w: any) => (
                           <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({Number(w.balance).toLocaleString("de-DE", { style: "currency", currency: "EUR" })})
+                            {w.name} ({formatCurrency(w.balance)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -216,12 +326,15 @@ export default function WalletsPage() {
           {isAdmin && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <Button size="sm"><Plus className="h-4 w-4 mr-1.5" />{isPrimary ? "Create primary wallet" : "Add wallet"}</Button>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  {isPrimarySetup ? "Create Primary Wallet" : "Create Wallet"}
+                </Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>{isPrimary ? "Create primary wallet" : "Create sub-wallet"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{isPrimarySetup ? "Create Primary Wallet" : "Create Sub-wallet"}</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); createWallet.mutate(); }} className="space-y-3">
-                  {isPrimary ? (
+                  {isPrimarySetup ? (
                     <>
                       <p className="text-sm text-muted-foreground">Your primary wallet receives incoming bank transfers. All sub-wallets are funded from here.</p>
                       <div className="space-y-1.5">
@@ -236,11 +349,11 @@ export default function WalletsPage() {
                   ) : (
                     <div className="space-y-1.5">
                       <Label>Wallet name *</Label>
-                      <Input value={walletForm.name} onChange={(e) => setWalletForm({ ...walletForm, name: e.target.value })} required placeholder="e.g. Marketing, Petty Cash, Office Supplies" />
+                      <Input value={walletForm.name} onChange={(e) => setWalletForm({ ...walletForm, name: e.target.value })} required placeholder="e.g. Marketing, Petty Cash" />
                     </div>
                   )}
                   <Button type="submit" className="w-full" disabled={createWallet.isPending}>
-                    {createWallet.isPending ? "Creating..." : isPrimary ? "Create primary wallet" : "Create wallet"}
+                    {createWallet.isPending ? "Creating..." : isPrimarySetup ? "Create Primary Wallet" : "Create Wallet"}
                   </Button>
                 </form>
               </DialogContent>
@@ -248,6 +361,43 @@ export default function WalletsPage() {
           )}
         </div>
       </div>
+
+      {/* Add Funds Dialog */}
+      <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isPrimaryTopUp ? "Record Incoming Transfer" : `Add Funds to ${addFundsTargetWallet?.name}`}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); addFundsToWallet.mutate(); }} className="space-y-3">
+            {isPrimaryTopUp ? (
+              <p className="text-sm text-muted-foreground">
+                Record a bank transfer amount that arrived to your primary wallet.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Funds will be transferred from <span className="font-medium">Primary Wallet</span> ({formatCurrency(primaryWallet?.balance ?? 0)}) to <span className="font-medium">{addFundsTargetWallet?.name}</span>.
+              </p>
+            )}
+            <div className="space-y-1.5">
+              <Label>Amount (€)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={addFundsAmount}
+                onChange={(e) => setAddFundsAmount(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={addFundsToWallet.isPending}>
+              {addFundsToWallet.isPending ? "Processing..." : isPrimaryTopUp ? "Record Transfer" : "Transfer Funds"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading wallets...</p>
@@ -261,112 +411,106 @@ export default function WalletsPage() {
         </Card>
       ) : (
         <>
-          {/* Primary Wallet */}
-          {primaryWallet && (
-            <Card className="mb-6 bg-primary/5 border-primary/20">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Landmark className="h-5 w-5 text-primary" />
-                      <h2 className="text-lg font-semibold">{primaryWallet.name}</h2>
-                      <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">Primary</Badge>
-                    </div>
-                    <p className="text-3xl font-bold tracking-tight mt-2">
-                      {Number(primaryWallet.balance).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-                    </p>
-                    {primaryWallet.iban_display && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground font-mono">{primaryWallet.iban_display}</span>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={copyIban}>
-                          {copiedIban ? <CheckCircle className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
-                        </Button>
-                        {primaryWallet.bic_display && (
-                          <span className="text-xs text-muted-foreground">BIC: {primaryWallet.bic_display}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {isAdmin && (
-                    <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline">Record incoming transfer</Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader><DialogTitle>Record incoming bank transfer</DialogTitle></DialogHeader>
-                        <form onSubmit={(e) => { e.preventDefault(); topUpPrimary.mutate(); }} className="space-y-3">
-                          <p className="text-sm text-muted-foreground">Record an incoming bank transfer amount that arrived to your primary wallet.</p>
-                          <div className="space-y-1.5">
-                            <Label>Amount received (€)</Label>
-                            <Input type="number" step="0.01" min="0.01" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} required />
-                          </div>
-                          <Button type="submit" className="w-full" disabled={topUpPrimary.isPending}>
-                            {topUpPrimary.isPending ? "Recording..." : "Record transfer"}
-                          </Button>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sub-wallets grid */}
-          {subWallets.length > 0 && (
-            <>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Sub-wallets</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {subWallets.map((w: any) => (
-                  <Card key={w.id}>
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm font-medium">{w.name}</p>
-                      </div>
-                      <p className="text-2xl font-bold">
-                        {Number(w.balance).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+          {/* Total Balance Card */}
+          <Card className="mb-8 w-fit">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-primary" />
               </div>
-            </>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Balance</p>
+                <p className="text-2xl font-bold tracking-tight">{formatCurrency(totalBalance)}</p>
+                {primaryWallet?.iban_display && (
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs text-muted-foreground font-mono">{primaryWallet.iban_display}</span>
+                    <button onClick={copyIban} className="text-muted-foreground hover:text-foreground">
+                      {copiedIban ? <CheckCircle className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Primary Wallet Table */}
+          {primaryWallet && (
+            <div className="mb-8">
+              <h2 className="text-sm font-semibold mb-3">Primary Wallet</h2>
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[30%]">Wallet</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Active Cards</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <WalletTableRow wallet={primaryWallet} />
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
           )}
 
-          {/* Recent transfers */}
-          {transfers.length > 0 && (
-            <>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Recent transfers</h2>
+          {/* Sub-wallets Table */}
+          {subWallets.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-sm font-semibold mb-3">Sub-wallets</h2>
               <Card>
-                <CardContent className="p-0">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">From</th>
-                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">To</th>
-                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Amount</th>
-                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Note</th>
-                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transfers.map((t: any) => (
-                        <tr key={t.id} className="border-b last:border-0">
-                          <td className="px-4 py-3 text-sm">{t.from_wallet?.name ?? "—"}</td>
-                          <td className="px-4 py-3 text-sm">{t.to_wallet?.name ?? "—"}</td>
-                          <td className="px-4 py-3 text-sm font-medium">
-                            {Number(t.amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">{t.note || "—"}</td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(t.created_at).toLocaleDateString("de-DE")}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[30%]">Wallet</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Active Cards</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {subWallets.map((w: any) => (
+                      <WalletTableRow key={w.id} wallet={w} showLowFunds />
+                    ))}
+                  </TableBody>
+                </Table>
               </Card>
-            </>
+            </div>
+          )}
+
+          {/* Recent Transfers */}
+          {transfers.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold mb-3">Recent Transfers</h2>
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Note</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transfers.map((t: any) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-sm">{t.from_wallet?.name ?? "—"}</TableCell>
+                        <TableCell className="text-sm">{t.to_wallet?.name ?? "—"}</TableCell>
+                        <TableCell className="text-sm font-medium">{formatCurrency(t.amount)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{t.note || "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(t.created_at).toLocaleDateString("de-DE")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
           )}
         </>
       )}
