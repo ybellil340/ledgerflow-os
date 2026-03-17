@@ -293,6 +293,11 @@ export default function WalletsPage() {
                       <Input value={walletForm.name} onChange={(e) => setWalletForm({ ...walletForm, name: e.target.value })} required placeholder="e.g. Marketing, Petty Cash" />
                     </div>
                   )}
+                  <div className="space-y-1.5">
+                    <Label>Low funds warning (€)</Label>
+                    <Input type="number" step="1" min="0" value={walletForm.low_funds_threshold} onChange={(e) => setWalletForm({ ...walletForm, low_funds_threshold: e.target.value })} placeholder="100" />
+                    <p className="text-xs text-muted-foreground">You'll see a warning when the balance drops below this amount.</p>
+                  </div>
                   <Button type="submit" className="w-full" disabled={createWallet.isPending}>
                     {createWallet.isPending ? "Creating..." : isPrimarySetup ? "Create Primary Wallet" : "Create Wallet"}
                   </Button>
