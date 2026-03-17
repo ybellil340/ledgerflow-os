@@ -25,6 +25,7 @@ export default function WalletsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [addFundsOpen, setAddFundsOpen] = useState(false);
+  const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [addFundsWalletId, setAddFundsWalletId] = useState<string | null>(null);
   const [walletForm, setWalletForm] = useState({ name: "", iban_display: "", bic_display: "" });
   const [transferForm, setTransferForm] = useState({ from_wallet_id: "", to_wallet_id: "", amount: "", note: "" });
