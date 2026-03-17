@@ -94,7 +94,7 @@ export default function ExpensesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       setOpen(false);
-      setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "" });
+      setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
       setReceiptFile(null);
       toast({ title: "Expense submitted" });
     },
