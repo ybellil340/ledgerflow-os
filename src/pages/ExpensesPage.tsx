@@ -28,6 +28,7 @@ export default function ExpensesPage() {
   const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const isApprover = role === "company_admin" || role === "finance_manager" || role === "approver";
