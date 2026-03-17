@@ -186,11 +186,63 @@ export default function ExpensesPage() {
                   <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Receipt</Label>
+                  <Label>Receipt / Invoice</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="file" accept="image/*,application/pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} />
-                    {receiptFile && <Upload className="h-4 w-4 text-success" />}
+                    <Input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0] || null;
+                        setReceiptFile(file);
+                        if (!file) return;
+                        setScanning(true);
+                        try {
+                          // Convert to base64 for OCR
+                          const reader = new FileReader();
+                          const base64 = await new Promise<string>((resolve, reject) => {
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                          });
+                          const { data, error } = await supabase.functions.invoke("scan-receipt", {
+                            body: { imageBase64: base64 },
+                          });
+                          if (error) throw error;
+                          if (data?.error) throw new Error(data.error);
+                          const result = data?.data;
+                          if (result) {
+                            setForm((prev) => ({
+                              ...prev,
+                              title: result.merchant_name || prev.title,
+                              amount: result.amount != null ? result.amount.toString() : prev.amount,
+                              currency: result.currency || prev.currency,
+                              date: result.date || prev.expense_date,
+                              expense_date: result.date || prev.expense_date,
+                              description: result.description || prev.description,
+                              category_id: prev.category_id,
+                            }));
+                            // Try to match category
+                            if (result.category_suggestion && categories.length > 0) {
+                              const match = categories.find((c: any) =>
+                                c.name.toLowerCase().includes(result.category_suggestion.toLowerCase()) ||
+                                result.category_suggestion.toLowerCase().includes(c.name.toLowerCase())
+                              );
+                              if (match) setForm((prev) => ({ ...prev, category_id: match.id }));
+                            }
+                            toast({ title: "Receipt scanned", description: "Fields auto-filled from document" });
+                          }
+                        } catch (err: any) {
+                          console.error("OCR scan error:", err);
+                          toast({ title: "Scan failed", description: err.message || "Could not extract data", variant: "destructive" });
+                        } finally {
+                          setScanning(false);
+                        }
+                      }}
+                    />
+                    {scanning && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                    {!scanning && receiptFile && <ScanLine className="h-4 w-4 text-success" />}
                   </div>
+                  {scanning && <p className="text-xs text-muted-foreground">Scanning document and extracting data...</p>}
                 </div>
                 <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                   {createMutation.isPending ? "Submitting..." : "Submit expense"}
