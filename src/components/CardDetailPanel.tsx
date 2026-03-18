@@ -145,19 +145,15 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
       const { data, error } = await supabase.rpc("get_card_details", { _card_id: card.id, _pin: pin });
       if (error) throw error;
 
-      const raw = (data && data.length > 0) ? (data[0] as any) : null;
-      // RPC may return card_number_encrypted or card_number
-      const cardNumber = raw?.card_number || raw?.card_number_encrypted || "";
-      const cvv = raw?.cvv || raw?.cvv_encrypted || "";
-      const expiryMonth = raw?.expiry_month || card.expiry_month || (new Date().getMonth() + 1);
-      const expiryYear = raw?.expiry_year || card.expiry_year || (new Date().getFullYear() + 3);
+      // RPC returns a single JSON object
+      const raw = Array.isArray(data) ? (data[0] ?? null) : (data as any);
 
-      setCardDetails({
-        card_number: cardNumber || ("•••• •••• •••• " + card.last_four),
-        expiry_month: expiryMonth,
-        expiry_year: expiryYear,
-        cvv: cvv || "•••",
-      });
+      const cardNumber = raw?.card_number || raw?.card_number_encrypted || ("•••• •••• •••• " + card.last_four);
+      const cvv = raw?.cvv || raw?.cvv_encrypted || "•••";
+      const expiryMonth = raw?.expiry_month ?? card.expiry_month ?? (new Date().getMonth() + 1);
+      const expiryYear = raw?.expiry_year ?? card.expiry_year ?? (new Date().getFullYear() + 3);
+
+      setCardDetails({ card_number: cardNumber, expiry_month: expiryMonth, expiry_year: expiryYear, cvv });
       setShowDetails(true);
       setPinDialogOpen(false);
     } catch (err: any) {
