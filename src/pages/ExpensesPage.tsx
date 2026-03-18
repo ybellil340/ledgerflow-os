@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Check, X, Eye, Loader2, anLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
+import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpenseDetailView from "@/components/ExpenseDetailView";
 import { scanReceipt } from "@/lib/scanReceipt";
@@ -211,7 +211,7 @@ export default function ExpensesPage() {
                             reader.onerror = reject;
                             reader.readAsDataURL(file);
                           });
-const { data: result, error } = await scanReceipt(imageBase64);
+const { data: result, error } = await scanReceipt(base64);
                                                       if (error) throw error;
                                                       if (result) {
                             setOcrResult(result);
