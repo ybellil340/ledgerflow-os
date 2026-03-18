@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Upload, Check, X, Eye, Loader2, anLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpenseDetailView from "@/components/ExpnseDetailView";
+import { scanReceipt } from "@/lib/scanReceipt";
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
@@ -210,10 +211,7 @@ export default function ExpensesPage() {
                             reader.onerror = reject;
                             reader.readAsDataURL(file);
                           });
-                          const { data, error } = await supabase.functions.invoke("scan-receipt", {
-                            body: { imageBase64: base64 },
-                          });
-                          if (error) throw error;
+const { data, error } = await scanReceipt(imageBase64);                          if (error) throw error;
                           if (data?.error) throw new Error(data.error);
                           const result = data?.data;
                           if (result) {
