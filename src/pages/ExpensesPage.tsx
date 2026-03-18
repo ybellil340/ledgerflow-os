@@ -155,14 +155,14 @@ export default function ExpensesPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>Submit expense</DialogTitle></DialogHeader>
               <form onSubmit={async (e) => {
-          e.preventDefault();
-          const fxRate = await getFxRate(form.currency, "EUR", form.expense_date);
-          createMutation.mutate({(e) => { e.preventDefault(); createMutation.mutate(); },
+                e.preventDefault();
+                const fxRate = await getFxRate(form.currency, "EUR", form.expense_date);
+                createMutation.mutate({ ...form, title: e.target.value ,
           fx_rate: fxRate,
-          base_amount: Math.round(parseFloat(form.amount)*fxRate*100)/100,
+          base_amount: Math.round(parseFloat(form.amount) * fxRate * 100) / 100,
           base_currency: "EUR"
         });
-        }} className="space-y-4">
+              }} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Title *</Label>
                   <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
