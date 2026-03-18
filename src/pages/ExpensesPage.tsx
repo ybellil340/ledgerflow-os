@@ -16,7 +16,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import ExpenseDetailView from "@/components/ExpenseDetailView";
 import { scanReceipt } from "@/lib/scanReceipt";
 import { getFxRate } from "@/lib/getFxRate";
-import { getFxRate } from "@/lib/getFxRate";
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
@@ -93,13 +92,7 @@ export default function ExpensesPage() {
         org_id: orgId!, submitter_id: user!.id, title: form.title,
         description: form.description || null, amount: parseFloat(form.amount),
         expense_date: form.expense_date, category_id: form.category_id || null,
-        currency: form.currency,
-          fx_rate: fxRate,
-          base_amount: baseAmount,
-          base_currency: "EUR",
-          fx_rate: fxRate,
-          base_amount: Math.round(parseFloat(form.amount) * fxRate * 100) / 100,
-          base_currency: "EUR", receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
+        currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
         vat_amount: ocrResult?.vat_amount || null,
         vat_rate: ocrResult?.vat_rate || null,
         tax_registration_number: ocrResult?.tax_registration_number || null,
@@ -161,7 +154,15 @@ export default function ExpensesPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Submit expense</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-4">
+              <form onSubmit={async (e) => {
+          e.preventDefault();
+          const fxRate = await getFxRate(form.currency, "EUR", form.expense_date);
+          createMutation.mutate({(e) => { e.preventDefault(); createMutation.mutate(); },
+          fx_rate: fxRate,
+          base_amount: Math.round(parseFloat(form.amount)*fxRate*100)/100,
+          base_currency: "EUR"
+        });
+        }} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Title *</Label>
                   <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
@@ -219,7 +220,7 @@ export default function ExpensesPage() {
                             reader.onerror = reject;
                             reader.readAsDataURL(file);
                           });
-const { data: result, error } = await scanReceipt(base64, file.type);
+const { data: result, error } = await scanReceipt(base64);
                                                       if (error) throw error;
                                                       if (result) {
                             setOcrResult(result);
@@ -281,7 +282,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} â older than 7 days without a receipt attached.
               </p>
             </div>
             <Button
@@ -323,7 +324,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                 <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ"}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "â"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Tooltip>
