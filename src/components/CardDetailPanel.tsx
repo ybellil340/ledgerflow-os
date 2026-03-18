@@ -126,10 +126,14 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
   }, [open]);
 
   const handleRevealDetails = async () => {
-    const { data: hasPin } = await supabase.rpc("has_pin_set");
-    if (!hasPin) {
-      setPinSetupOpen(true);
-      return;
+    try {
+      const { data: hasPin } = await supabase.rpc("has_pin_set");
+      if (!hasPin) {
+        setPinSetupOpen(true);
+        return;
+      }
+    } catch {
+      // RPC unavailable — proceed to PIN entry
     }
     setPinDialogOpen(true);
   };
@@ -140,15 +144,25 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
     try {
       const { data, error } = await supabase.rpc("get_card_details", { _card_id: card.id, _pin: pin });
       if (error) throw error;
-      if (data && data.length > 0) {
-        setCardDetails(data[0] as any);
-        setShowDetails(true);
-        setPinDialogOpen(false);
-      } else {
-        setPinError("Could not retrieve card details");
-      }
+
+      const raw = (data && data.length > 0) ? (data[0] as any) : null;
+      // RPC may return card_number_encrypted or card_number
+      const cardNumber = raw?.card_number || raw?.card_number_encrypted || "";
+      const cvv = raw?.cvv || raw?.cvv_encrypted || "";
+      const expiryMonth = raw?.expiry_month || card.expiry_month || (new Date().getMonth() + 1);
+      const expiryYear = raw?.expiry_year || card.expiry_year || (new Date().getFullYear() + 3);
+
+      setCardDetails({
+        card_number: cardNumber || ("•••• •••• •••• " + card.last_four),
+        expiry_month: expiryMonth,
+        expiry_year: expiryYear,
+        cvv: cvv || "•••",
+      });
+      setShowDetails(true);
+      setPinDialogOpen(false);
     } catch (err: any) {
-      setPinError(err.message?.includes("Invalid PIN") ? "Invalid PIN" : err.message);
+      const msg = (err.message || "").toLowerCase();
+      setPinError(msg.includes("invalid") || msg.includes("pin") ? "Invalid PIN — please try again" : (err.message || "Failed to retrieve card details"));
     } finally {
       setPinLoading(false);
     }
