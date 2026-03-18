@@ -2,18 +2,29 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const key = (import.meta as any).env?.VITE_ANTHROPIC_KEY || "";
   const isPdf = mimeType === "application/pdf";
 
-  const prompt = `Extract all data from this receipt or invoice. Return ONLY a JSON object with these fields:
+  const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON:
 {
   "merchant_name": "string",
   "amount": number,
-  "currency": "string (e.g. EUR, USD, TND)",
+  "currency": "string (3-letter ISO code, e.g. EUR USD AED TND)",
   "date": "YYYY-MM-DD",
-  "description": "brief description",
+  "description": "brief description of what was purchased",
   "category_suggestion": "one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other",
   "vat_amount": number (0 if not found),
   "vat_rate": number (0 if not found)
 }
-No markdown, no explanation. Just the JSON.`;
+No markdown, no explanation, just the JSON object.`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "x-api-key": key,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
+
+  // PDFs use claude-3-5-sonnet with pdf beta; images use claude-sonnet-4
+  const model = isPdf ? "claude-3-5-sonnet-20241022" : "claude-sonnet-4-20250514";
+  if (isPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
 
   const content: any[] = [
     isPdf
@@ -24,17 +35,8 @@ No markdown, no explanation. Just the JSON.`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [{ role: "user", content }]
-    })
+    headers,
+    body: JSON.stringify({ model, max_tokens: 1024, messages: [{ role: "user", content }] })
   });
 
   if (!res.ok) {
