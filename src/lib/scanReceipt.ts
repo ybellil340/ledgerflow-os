@@ -2,18 +2,10 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const key = (import.meta as any).env?.VITE_ANTHROPIC_KEY || "";
   const isPdf = mimeType === "application/pdf";
 
-  const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON:
-{
-  "merchant_name": "string",
-  "amount": number,
-  "currency": "string (3-letter ISO code e.g. EUR USD AED TND GBP)",
-  "date": "YYYY-MM-DD",
-  "description": "brief description of purchase",
-  "category_suggestion": "one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other",
-  "vat_amount": number (0 if not found),
-  "vat_rate": number (0 if not found)
-}
-No markdown, no explanation, just the JSON object.`;
+  const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON with these exact fields:
+{"merchant_name":"","amount":0,"currency":"EUR","date":"YYYY-MM-DD","description":"","category_suggestion":"Travel","vat_amount":0,"vat_rate":0}
+Use the actual values from the document. category_suggestion must be one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other.
+Return ONLY the JSON, no markdown, no explanation.`;
 
   const content: any[] = [
     isPdf
@@ -28,14 +20,13 @@ No markdown, no explanation, just the JSON object.`;
     "anthropic-version": "2023-06-01",
     "anthropic-dangerous-direct-browser-access": "true",
   };
-
   if (isPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
       messages: [{ role: "user", content }]
     })
@@ -47,10 +38,10 @@ No markdown, no explanation, just the JSON object.`;
   }
   try {
     const j = await res.json();
-    const text = j.content[0].text.trim();
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    return { data: JSON.parse(text.slice(start, end + 1)), error: null };
+    const raw = j.content[0].text.trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    return { data: JSON.parse(raw.slice(start, end + 1)), error: null };
   } catch (e) {
     return { data: null, error: e as Error };
   }
