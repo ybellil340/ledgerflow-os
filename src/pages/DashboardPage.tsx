@@ -1,20 +1,24 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 const taxObligations = [
-  { name: "USt-Voranmeldung Q1", date: "10 Apr", status: "Due", color: "destructive" as const },
-  { name: "Körperschaftsteuer", date: "31 Mai", status: "Prep", color: "warning" as const },
-  { name: "Gewerbesteuer", date: "15 Jun", status: "On track", color: "success" as const },
+  { name: "USt-Voranmeldung Q1", date: "10 Apr", status: "Due",      color: "destructive" as const },
+  { name: "Körperschaftsteuer",  date: "31 Mai", status: "Prep",     color: "warning"     as const },
+  { name: "Gewerbesteuer",       date: "15 Jun", status: "On track", color: "success"     as const },
 ];
 
 const StatusBadge = ({ status, color }: { status: string; color: "destructive" | "warning" | "success" }) => {
-  const styles = { destructive: "bg-destructive/10 text-destructive", warning: "bg-warning/10 text-warning", success: "bg-success/10 text-success" };
+  const styles = {
+    destructive: "bg-destructive/10 text-destructive",
+    warning:     "bg-warning/10 text-warning",
+    success:     "bg-success/10 text-success",
+  };
   return <span className={cn("text-xs font-medium px-2 py-0.5 rounded", styles[color])}>{status}</span>;
 };
 
@@ -22,23 +26,23 @@ const fmt = (n: number) => n.toLocaleString("de-DE", { style: "currency", curren
 
 export default function DashboardPage() {
   const { orgId } = useOrganization();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // Monthly spend (expenses approved/reimbursed this month)
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
   const { data: monthlySpend = 0 } = useQuery({
     queryKey: ["dashboard-monthly-spend", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("expenses").select("amount").eq("org_id", orgId!).in("status", ["approved", "reimbursed"]).gte("expense_date", startOfMonth.split("T")[0]);
+      const { data, error } = await supabase
+        .from("expenses").select("amount")
+        .eq("org_id", orgId!).in("status", ["approved", "reimbursed"])
+        .gte("expense_date", startOfMonth.split("T")[0]);
       if (error) throw error;
       return (data || []).reduce((s, e) => s + Number(e.amount), 0);
     },
     enabled: !!orgId,
   });
 
-  // Cash position (sum of bank accounts)
   const { data: cashPosition = 0 } = useQuery({
     queryKey: ["dashboard-cash", orgId],
     queryFn: async () => {
@@ -49,44 +53,49 @@ export default function DashboardPage() {
     enabled: !!orgId,
   });
 
-  // Pending approvals
   const { data: pendingExpenses = [] } = useQuery({
     queryKey: ["dashboard-pending", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("expenses").select("id, title, amount, submitter_id, expense_date").eq("org_id", orgId!).eq("status", "submitted").order("created_at", { ascending: false }).limit(10);
+      const { data, error } = await supabase
+        .from("expenses").select("id, title, amount, expense_date")
+        .eq("org_id", orgId!).eq("status", "submitted")
+        .order("created_at", { ascending: false }).limit(8);
       if (error) throw error;
       return data || [];
     },
     enabled: !!orgId,
   });
 
-  // Missing receipts
   const { data: missingReceipts = 0 } = useQuery({
     queryKey: ["dashboard-missing-receipts", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("expenses").select("id").eq("org_id", orgId!).is("receipt_url", null).in("status", ["submitted", "approved"]);
+      const { data, error } = await supabase
+        .from("expenses").select("id").eq("org_id", orgId!)
+        .is("receipt_url", null).in("status", ["submitted", "approved"]);
       if (error) throw error;
       return (data || []).length;
     },
     enabled: !!orgId,
   });
 
-  // Recent transactions
   const { data: recentTxns = [] } = useQuery({
     queryKey: ["dashboard-txns", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("transactions").select("id, merchant_name, amount, transaction_date, status").eq("org_id", orgId!).order("transaction_date", { ascending: false }).limit(5);
+      const { data, error } = await supabase
+        .from("transactions").select("id, merchant_name, amount, transaction_date")
+        .eq("org_id", orgId!).order("transaction_date", { ascending: false }).limit(5);
       if (error) throw error;
       return data || [];
     },
     enabled: !!orgId,
   });
 
-  // Spend by category
   const { data: categorySpend = [] } = useQuery({
     queryKey: ["dashboard-category-spend", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("expenses").select("category_id, amount, expense_categories(name)").eq("org_id", orgId!).in("status", ["approved", "reimbursed"]);
+      const { data, error } = await supabase
+        .from("expenses").select("category_id, amount, expense_categories(name)")
+        .eq("org_id", orgId!).in("status", ["approved", "reimbursed"]);
       if (error) throw error;
       const map = new Map<string, { name: string; total: number }>();
       for (const e of data || []) {
@@ -98,29 +107,6 @@ export default function DashboardPage() {
       return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 6);
     },
     enabled: !!orgId,
-  });
-
-  const approveExpense = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("expenses").update({ status: "approved", approved_at: new Date().toISOString(), approver_id: user!.id } as any).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-pending"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-monthly-spend"] });
-      toast({ title: "Expense approved" });
-    },
-  });
-
-  const rejectExpense = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("expenses").update({ status: "rejected", rejected_at: new Date().toISOString(), approver_id: user!.id, rejection_reason: "Rejected from dashboard" } as any).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-pending"] });
-      toast({ title: "Expense rejected" });
-    },
   });
 
   const maxCategory = categorySpend.length > 0 ? Math.max(...categorySpend.map(c => c.total)) : 0;
@@ -147,48 +133,80 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-0.5">Across linked accounts</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className="cursor-pointer hover:border-warning/50 transition-colors"
+          onClick={() => navigate("/expenses")}
+        >
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground mb-1.5">Pending approvals</p>
-            <p className={cn("text-2xl font-semibold", pendingExpenses.length > 0 && "text-warning")}>{pendingExpenses.length}</p>
+            <p className={cn("text-2xl font-semibold", pendingExpenses.length > 0 && "text-warning")}>
+              {pendingExpenses.length}
+            </p>
+            {pendingExpenses.length > 0 && (
+              <p className="text-xs text-warning/80 mt-0.5 flex items-center gap-1">
+                Review in Expenses <ArrowRight className="h-3 w-3" />
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground mb-1.5">Missing receipts</p>
-            <p className={cn("text-2xl font-semibold", missingReceipts > 0 && "text-destructive")}>{missingReceipts}</p>
+            <p className={cn("text-2xl font-semibold", missingReceipts > 0 && "text-destructive")}>
+              {missingReceipts}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Pending Approvals */}
+        {/* Pending Approvals — view only, no actions */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">Pending approvals</CardTitle>
+            {pendingExpenses.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/expenses")}
+              >
+                View all <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-0">
             {pendingExpenses.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">No pending approvals</p>
-            ) : pendingExpenses.map((e: any) => (
-              <div key={e.id} className="flex items-center gap-3 py-3 border-b last:border-0">
-                <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
-                  <span className="text-[11px] font-semibold text-sidebar-primary-foreground">
-                    {e.title.substring(0, 2).toUpperCase()}
-                  </span>
+            ) : (
+              pendingExpenses.map((e: any) => (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-3 py-3 border-b last:border-0 cursor-pointer hover:bg-muted/30 -mx-2 px-2 rounded transition-colors"
+                  onClick={() => navigate("/expenses")}
+                  title="Open in Expenses to review and approve"
+                >
+                  <div className="w-8 h-8 rounded-full bg-sidebar-primary/15 flex items-center justify-center shrink-0">
+                    <span className="text-[11px] font-semibold text-sidebar-primary">
+                      {e.title.substring(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{e.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(e.expense_date).toLocaleDateString("de-DE")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-semibold">{fmt(Number(e.amount))}</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-warning/10 text-warning uppercase tracking-wide">
+                      Pending
+                    </span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{e.title}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(e.expense_date).toLocaleDateString("de-DE")}</p>
-                </div>
-                <span className="text-sm font-semibold mr-3 whitespace-nowrap">{fmt(Number(e.amount))}</span>
-                <div className="flex gap-1.5 shrink-0">
-                  <Button size="sm" variant="outline" className="h-7 text-xs px-2.5 text-success border-success/30 hover:bg-success/10" onClick={() => approveExpense.mutate(e.id)}>Approve</Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs px-2.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => rejectExpense.mutate(e.id)}>Reject</Button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -209,7 +227,10 @@ export default function DashboardPage() {
                       <span className="font-medium">{fmt(c.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${maxCategory > 0 ? (c.total / maxCategory) * 100 : 0}%` }} />
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${maxCategory > 0 ? (c.total / maxCategory) * 100 : 0}%` }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -226,7 +247,12 @@ export default function DashboardPage() {
           <CardContent className="space-y-0">
             {taxObligations.map((tax, i) => (
               <div key={i} className="flex items-center gap-3 py-3 border-b last:border-0">
-                <div className={cn("w-2 h-2 rounded-full shrink-0", tax.color === "destructive" && "bg-destructive", tax.color === "warning" && "bg-warning", tax.color === "success" && "bg-success")} />
+                <div className={cn(
+                  "w-2 h-2 rounded-full shrink-0",
+                  tax.color === "destructive" && "bg-destructive",
+                  tax.color === "warning"     && "bg-warning",
+                  tax.color === "success"     && "bg-success",
+                )} />
                 <span className="text-sm flex-1">{tax.name}</span>
                 <span className="text-sm text-muted-foreground mr-2">{tax.date}</span>
                 <StatusBadge status={tax.status} color={tax.color} />
@@ -243,13 +269,17 @@ export default function DashboardPage() {
           <CardContent className="space-y-0">
             {recentTxns.length === 0 ? (
               <p className="text-sm text-muted-foreground">No transactions yet</p>
-            ) : recentTxns.map((t: any) => (
-              <div key={t.id} className="flex items-center gap-3 py-3 border-b last:border-0">
-                <span className="text-sm flex-1 font-medium">{t.merchant_name}</span>
-                <span className="text-sm font-semibold">{fmt(Number(t.amount))}</span>
-                <span className="text-xs text-muted-foreground ml-2">{new Date(t.transaction_date).toLocaleDateString("de-DE")}</span>
-              </div>
-            ))}
+            ) : (
+              recentTxns.map((t: any) => (
+                <div key={t.id} className="flex items-center gap-3 py-3 border-b last:border-0">
+                  <span className="text-sm flex-1 font-medium">{t.merchant_name}</span>
+                  <span className="text-sm font-semibold">{fmt(Number(t.amount))}</span>
+                  <span className="text-xs text-muted-foreground ml-2">
+                    {new Date(t.transaction_date).toLocaleDateString("de-DE")}
+                  </span>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
