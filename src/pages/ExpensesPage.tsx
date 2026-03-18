@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from "react"; 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
+import { Plus, Upload, Check, X, Eye, Loader2, anLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import ExpenseDetailView from "@/components/ExpenseDetailView";
+import ExpenseDetailView from "@/components/ExpnseDetailView";
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
