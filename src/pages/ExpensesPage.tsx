@@ -13,7 +13,7 @@ import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLay
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Upload, Check, X, Eye, Loader2, anLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import ExpenseDetailView from "@/components/ExpnseDetailView";
+import ExpenseDetailView from "@/components/ExpenseDetailView";
 import { scanReceipt } from "@/lib/scanReceipt";
 
 export default function ExpensesPage() {
