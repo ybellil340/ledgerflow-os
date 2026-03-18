@@ -207,7 +207,7 @@ export default function ExpensesPage() {
                           // Convert to base64 for OCR
                           const reader = new FileReader();
                           const base64 = await new Promise<string>((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result as string);
+                            reader.onload = () => resolve((reader.result as string).split(",")[1]);
                             reader.onerror = reject;
                             reader.readAsDataURL(file);
                           });
