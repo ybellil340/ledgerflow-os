@@ -15,6 +15,7 @@ import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, Circ
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpenseDetailView from "@/components/ExpenseDetailView";
 import { scanReceipt } from "@/lib/scanReceipt";
+import { getFxRate } from "@/lib/getFxRate";
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
@@ -91,7 +92,10 @@ export default function ExpensesPage() {
         org_id: orgId!, submitter_id: user!.id, title: form.title,
         description: form.description || null, amount: parseFloat(form.amount),
         expense_date: form.expense_date, category_id: form.category_id || null,
-        currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
+        currency: form.currency,
+          fx_rate: (window as any).__pendingFxRate || 1,
+          base_amount: (window as any).__pendingBaseAmount || parseFloat(form.amount) || 0,
+          base_currency: "EUR", receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
         vat_amount: ocrResult?.vat_amount || null,
         vat_rate: ocrResult?.vat_rate || null,
         tax_registration_number: ocrResult?.tax_registration_number || null,
@@ -273,7 +277,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} Ã¢ÂÂ older than 7 days without a receipt attached.
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂ¢ÃÂÃÂ older than 7 days without a receipt attached.
               </p>
             </div>
             <Button
@@ -315,7 +319,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                 <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "Ã¢ÂÂ"}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂ¢ÃÂÃÂ"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Tooltip>
