@@ -281,7 +281,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
               </p>
             </div>
             <Button
@@ -323,7 +323,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                 <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ"}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Tooltip>
