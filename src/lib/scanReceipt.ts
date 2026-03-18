@@ -6,9 +6,9 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
 {
   "merchant_name": "string",
   "amount": number,
-  "currency": "string (3-letter ISO code, e.g. EUR USD AED TND)",
+  "currency": "string (3-letter ISO code e.g. EUR USD AED TND GBP)",
   "date": "YYYY-MM-DD",
-  "description": "brief description of what was purchased",
+  "description": "brief description of purchase",
   "category_suggestion": "one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other",
   "vat_amount": number (0 if not found),
   "vat_rate": number (0 if not found)
@@ -20,11 +20,8 @@ No markdown, no explanation, just the JSON object.`;
     "x-api-key": key,
     "anthropic-version": "2023-06-01",
     "anthropic-dangerous-direct-browser-access": "true",
+    "anthropic-beta": "pdfs-2024-09-25",
   };
-
-  // PDFs use claude-3-5-sonnet with pdf beta; images use claude-sonnet-4
-  const model = isPdf ? "claude-3-5-sonnet-20241022" : "claude-sonnet-4-20250514";
-  if (isPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
 
   const content: any[] = [
     isPdf
@@ -36,7 +33,11 @@ No markdown, no explanation, just the JSON object.`;
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers,
-    body: JSON.stringify({ model, max_tokens: 1024, messages: [{ role: "user", content }] })
+    body: JSON.stringify({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1024,
+      messages: [{ role: "user", content }]
+    })
   });
 
   if (!res.ok) {
