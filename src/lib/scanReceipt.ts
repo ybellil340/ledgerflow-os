@@ -20,8 +20,11 @@ No markdown, no explanation, just the JSON object.`;
     "x-api-key": key,
     "anthropic-version": "2023-06-01",
     "anthropic-dangerous-direct-browser-access": "true",
-    "anthropic-beta": "pdfs-2024-09-25",
   };
+
+  if (isPdf) {
+    headers["anthropic-beta"] = "pdfs-2024-09-25";
+  }
 
   const content: any[] = [
     isPdf
