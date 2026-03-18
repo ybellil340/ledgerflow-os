@@ -211,10 +211,9 @@ export default function ExpensesPage() {
                             reader.onerror = reject;
                             reader.readAsDataURL(file);
                           });
-const { data, error } = await scanReceipt(imageBase64);                          if (error) throw error;
-                          if (data?.error) throw new Error(data.error);
-                          const result = data?.data;
-                          if (result) {
+const { data: result, error } = await scanReceipt(imageBase64);
+                                                      if (error) throw error;
+                                                      if (result) {
                             setOcrResult(result);
                             setForm((prev) => ({
                               ...prev,
