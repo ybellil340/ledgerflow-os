@@ -2,44 +2,39 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const key = (import.meta as any).env?.VITE_ANTHROPIC_KEY || "";
   const isPdf = mimeType === "application/pdf";
 
-  const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON:
+  const prompt = `Extract all data from this receipt or invoice. Return ONLY a JSON object with these fields:
 {
   "merchant_name": "string",
   "amount": number,
-  "currency": "EUR",
+  "currency": "string (e.g. EUR, USD, TND)",
   "date": "YYYY-MM-DD",
-  "description": "brief description of what was purchased",
+  "description": "brief description",
   "category_suggestion": "one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other",
   "vat_amount": number (0 if not found),
-  "vat_rate": number (percentage e.g. 19, 0 if not found)
+  "vat_rate": number (0 if not found)
 }
-No markdown, no explanation, just JSON.`;
+No markdown, no explanation. Just the JSON.`;
 
-  const content: any[] = isPdf
-    ? [
-        { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-        { type: "text", text: prompt }
-      ]
-    : [
-        { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
-        { type: "text", text: prompt }
-      ];
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "x-api-key": key,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
-  if (isPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
-
-  // PDFs require claude-3-5-sonnet, images work with claude-sonnet-4
-  const model = isPdf ? "claude-3-5-sonnet-20241022" : "claude-sonnet-4-20250514";
+  const content: any[] = [
+    isPdf
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
+      : { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
+    { type: "text", text: prompt }
+  ];
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers,
-    body: JSON.stringify({ model, max_tokens: 1024, messages: [{ role: "user", content }] })
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      messages: [{ role: "user", content }]
+    })
   });
 
   if (!res.ok) {
