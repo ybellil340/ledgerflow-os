@@ -2,10 +2,9 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const key = (import.meta as any).env?.VITE_ANTHROPIC_KEY || "";
   const isPdf = mimeType === "application/pdf";
 
-  const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON:
+  const prompt = `Extract data from this receipt/invoice. Return ONLY this JSON:
 {"merchant_name":"","amount":0,"currency":"EUR","date":"YYYY-MM-DD","description":"","category_suggestion":"Other","vat_amount":0,"vat_rate":0}
-Use actual values. category_suggestion must be one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other.
-Return ONLY the JSON, no markdown.`;
+Fill in actual values. category_suggestion: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, or Other.`;
 
   const content: any[] = [
     isPdf
@@ -23,7 +22,7 @@ Return ONLY the JSON, no markdown.`;
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       messages: [{ role: "user", content }]
     })
