@@ -6,9 +6,21 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const cleanMime = base64.startsWith("data:") ? base64.split(":")[1].split(";")[0] : mimeType;
   const isPdf = cleanMime === "application/pdf";
 
-  const prompt = `Extract data from this receipt/invoice. Return ONLY valid JSON:
-{"merchant_name":"","amount":0,"currency":"EUR","date":"YYYY-MM-DD","description":"","category_suggestion":"Other","vat_amount":0,"vat_rate":0}
-Fill in actual values. category_suggestion must be one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other.`;
+  const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON:
+{
+  "merchant_name": "",
+  "amount": 0,
+  "currency": "EUR",
+  "date": "YYYY-MM-DD",
+  "description": "",
+  "category_suggestion": "Other",
+  "vat_amount": 0,
+  "vat_rate": 0,
+  "tax_registration_number": ""
+}
+Fill in actual values from the document. Leave tax_registration_number empty string if not found.
+category_suggestion must be one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other.
+Return ONLY the JSON object, no markdown, no explanation.`;
 
   const content: any[] = [
     isPdf
