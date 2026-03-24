@@ -1,9 +1,21 @@
+function stripDataUrl(s: string): string {
+  // Remove data URL prefix like "data:image/jpeg;base64," if present
+  const comma = s.lastIndexOf(",");
+  return comma !== -1 ? s.substring(comma + 1) : s;
+}
+
+function getMime(s: string, fallback: string): string {
+  if (!s.startsWith("data:")) return fallback;
+  const colon = s.indexOf(":");
+  const semi = s.indexOf(";");
+  return s.substring(colon + 1, semi);
+}
+
 export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const key = (import.meta as any).env?.VITE_ANTHROPIC_KEY || "";
 
-  // Strip data URL prefix if present (e.g. "data:image/jpeg;base64,...")
-  const cleanBase64 = base64.indexOf("base64,") !== -1 ? base64.split("base64,")[1] : base64;
-  const cleanMime = base64.startsWith("data:") ? base64.split(":")[1].split(";")[0] : mimeType;
+  const cleanBase64 = stripDataUrl(base64);
+  const cleanMime = getMime(base64, mimeType);
   const isPdf = cleanMime === "application/pdf";
 
   const prompt = `Extract all data from this receipt or invoice. Return ONLY valid JSON:
@@ -18,9 +30,8 @@ export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   "vat_rate": 0,
   "tax_registration_number": ""
 }
-Fill in actual values from the document. Leave tax_registration_number empty string if not found.
-category_suggestion must be one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other.
-Return ONLY the JSON object, no markdown, no explanation.`;
+Fill actual values. category_suggestion: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, or Other.
+Return ONLY JSON.`;
 
   const content: any[] = [
     isPdf
