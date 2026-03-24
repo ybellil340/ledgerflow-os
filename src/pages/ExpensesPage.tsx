@@ -236,10 +236,15 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                             }));
                             // Try to match category
                             if (result.category_suggestion && categories.length > 0) {
-                              const match = categories.find((c: any) =>
-                                c.name.toLowerCase().includes(result.category_suggestion.toLowerCase()) ||
-                                result.category_suggestion.toLowerCase().includes(c.name.toLowerCase())
-                              );
+                              const CMAP: Record<string,string> = {
+                                "travel":"TRAVEL","software & saas":"SOFTWARE",
+                                "meals & entertainment":"MEALS","equipment":"EQUIPMENT",
+                                "marketing":"MARKETING","office supplies":"OFFICE",
+                                "utilities":"TELECOM","professional services":"TRAINING",
+                                "other":"OTHER"
+                              };
+                              const _code = CMAP[result.category_suggestion?.toLowerCase?.()?.trim() || ""] || "OTHER";
+                              const match = categories.find((c: any) => c.code === _code) || categories.find((c: any) => c.name.toLowerCase() === result.category_suggestion?.toLowerCase()?.trim());
                               if (match) setForm((prev) => ({ ...prev, category_id: match.id }));
                             }
                             toast({ title: "Receipt scanned", description: "Fields auto-filled from document" });
@@ -283,7 +288,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
               </p>
             </div>
             <Button
@@ -325,7 +330,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                 <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ"}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name ?? "—" || "ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Tooltip>
