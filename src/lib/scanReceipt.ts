@@ -1,15 +1,19 @@
 export async function scanReceipt(base64: string, mimeType = "image/jpeg") {
   const key = (import.meta as any).env?.VITE_ANTHROPIC_KEY || "";
-  const isPdf = mimeType === "application/pdf";
 
-  const prompt = `Extract data from this receipt/invoice. Return ONLY this JSON:
+  // Strip data URL prefix if present (e.g. "data:image/jpeg;base64,...")
+  const cleanBase64 = base64.indexOf("base64,") !== -1 ? base64.split("base64,")[1] : base64;
+  const cleanMime = base64.startsWith("data:") ? base64.split(":")[1].split(";")[0] : mimeType;
+  const isPdf = cleanMime === "application/pdf";
+
+  const prompt = `Extract data from this receipt/invoice. Return ONLY valid JSON:
 {"merchant_name":"","amount":0,"currency":"EUR","date":"YYYY-MM-DD","description":"","category_suggestion":"Other","vat_amount":0,"vat_rate":0}
-Fill in actual values. category_suggestion: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, or Other.`;
+Fill in actual values. category_suggestion must be one of: Travel, Software & SaaS, Meals & Entertainment, Equipment, Marketing, Office Supplies, Utilities, Professional Services, Other.`;
 
   const content: any[] = [
     isPdf
-      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
-      : { type: "image", source: { type: "base64", media_type: mimeType, data: base64 } },
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: cleanBase64 } }
+      : { type: "image", source: { type: "base64", media_type: cleanMime, data: cleanBase64 } },
     { type: "text", text: prompt }
   ];
 
