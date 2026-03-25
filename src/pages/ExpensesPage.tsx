@@ -17,64 +17,46 @@ import ExpenseDetailView from "@/components/ExpenseDetailView";
 import { scanReceipt } from "@/lib/scanReceipt";
 import { getFxRate } from "@/lib/getFxRate";
 
-// ââ Download helpers ââââââââââââââââââââââââââââââââââââââââââââââ
-function escapeCsv(v: any): string {
-  if (v == null) return '';
-  const s = String(v);
-  return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+function _esc(v: unknown): string {
+  const s = v == null ? "" : String(v);
+  return (s.indexOf(",") > -1 || s.indexOf('"') > -1) ? '"' + s.replace(/"/g, '\"\\"\"') + '"' : s;
 }
-
-function downloadCsv(expenses: any[]) {
-  const headers = ['Date/time','Spender Name','Merchant','Spend Category','Receipt','Currency','Amount','Base Amount (EUR)','FX Rate','Description','VAT Amount','VAT Rate','TRN Number','Category','Status'];
-  const rows = expenses.map(e => [
-    e.expense_date,
-    '',
-    e.title,
-    e.expense_categories?.name || '',
-    '',
-    e.currency,
-    e.amount,
-    e.base_amount || e.amount,
-    e.fx_rate || 1,
-    e.description || '',
-    e.vat_amount || 0,
-    e.vat_rate || 0,
-    e.tax_registration_number || '',
-    e.expense_categories?.name || '',
-    e.status,
-  ].map(escapeCsv).join(','));
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'expenses-' + new Date().toISOString().split('T')[0] + '.csv'; a.click();
-  URL.revokeObjectURL(url);
+function downloadExpensesCsv(rows: unknown[]) {
+  const h = ["Date","Title","Currency","Amount","Base EUR","FX Rate","Category","Status","Description","VAT Amount","VAT Rate","TRN"];
+  const body = (rows as any[]).map(function(e) {
+    const cat = e.expense_categories ? e.expense_categories.name : "";
+    return [e.expense_date,e.title,e.currency,e.amount,e.base_amount||"",e.fx_rate||1,cat,e.status,e.description||"",e.vat_amount||0,e.vat_rate||0,e.tax_registration_number||""].map(_esc).join(",");
+  });
+  const csv = [h.join(",")].concat(body).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"}));
+  a.download = "expenses-" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click();
 }
-
-function downloadPdf(expenses: any[]) {
-  const th = function(s: string) { return '<th style="background:#1e3a5f;color:#fff;padding:6px 8px;text-align:left">' + s + '</th>'; };
-  const td = function(s: string) { return '<td style="padding:5px 8px;border-bottom:1px solid #eee">' + s + '</td>'; };
-  const header = '<tr>' + th('Date') + th('Title') + th('Currency') + th('Amount') + th('Base EUR') + th('Category') + th('Status') + th('VAT') + '</tr>';
-  const rows = expenses.map(function(e: any) {
-    return '<tr>' +
-      td(e.expense_date || '') +
-      td(e.title || '') +
-      td(e.currency || '') +
-      td(Number(e.amount || 0).toFixed(2)) +
-      td(e.base_amount ? Number(e.base_amount).toFixed(2) : '') +
-      td((e.expense_categories && e.expense_categories.name) ? e.expense_categories.name : '—') +
-      td(e.status || '') +
-      td(String(e.vat_amount || 0)) +
-    '</tr>';
-  }).join('');
-  const style = '<style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse;margin-top:12px}</style>';
-  const html = '<html><head><meta charset="utf-8"><title>Expenses</title>' + style + '</head><body>' +
-    '<h1>Expenses Report — ' + new Date().toLocaleDateString() + '</h1>' +
-    '<p style="color:#666;font-size:10px">Total: ' + expenses.length + ' expenses</p>' +
-    '<table><thead>' + header + '</thead><tbody>' + rows + '</tbody></table></body></html>';
-  const w = window.open('', '_blank');
+function downloadExpensesPdf(rows: unknown[]) {
+  const th = function(s: string) { return "<th style=\"background:#1e3a5f;color:#fff;padding:6px 8px\">" + s + "</th>"; };
+  const td = function(s: string) { return "<td style=\"padding:5px 8px;border-bottom:1px solid #eee\">" + s + "</td>"; };
+  const hdr = "<tr>" + ["Date","Title","CCY","Amount","EUR","Category","Status","VAT"].map(th).join("") + "</tr>";
+  const bdy = (rows as any[]).map(function(e) {
+    const cat = e.expense_categories ? e.expense_categories.name : "";
+    return "<tr>" + [
+      e.expense_date||"", e.title||"", e.currency||"",
+      Number(e.amount||0).toFixed(2),
+      e.base_amount ? Number(e.base_amount).toFixed(2) : "",
+      cat, e.status||"", String(e.vat_amount||0)
+    ].map(td).join("") + "</tr>";
+  }).join("");
+  const st = "<style>table{width:100%;border-collapse:collapse;font-size:11px;font-family:Arial}</style>";
+  const html = "<html><head>" + st + "</head><body><h2>Expenses</h2><table><thead>" + hdr + "</thead><tbody>" + bdy + "</tbody></table></body></html>";
+  const w = window.open("", "_blank");
   if (w) { w.document.write(html); w.document.close(); w.print(); }
 }
-// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+
+// Ã¢ÂÂÃ¢ÂÂ Download helpers Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+
+
+
+// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
@@ -205,11 +187,7 @@ export default function ExpensesPage() {
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by title, merchant..."
-        onDownload={(rows) => {
-        const choice = window.confirm('Click OK for CSV, Cancel for PDF');
-        if (choice) downloadCsv(rows || allExpenses);
-        else downloadPdf(rows || allExpenses);
-      }}}
+        onDownload={function(r: unknown) { const rows = (r as any[]) || allExpenses; if (window.confirm("OK = CSV  |  Cancel = PDF")) { downloadExpensesCsv(rows); } else { downloadExpensesPdf(rows); } }}}}
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -345,7 +323,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
               </p>
             </div>
             <Button
@@ -387,7 +365,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                 <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "Ã¢ÂÂ"}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂ¢ÃÂÃÂ"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Tooltip>
