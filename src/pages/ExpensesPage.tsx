@@ -1,435 +1,205 @@
-import { useState } from "react"; 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useExpenses } from "@/hooks/useExpenses";
+import { useCategories } from "@/hooks/useCategories";
+import { scanReceipt } from "@/lib/scanReceipt";
+import { getFxRate } from "@/lib/getFxRate";
+import { DownloadMenu } from "@/components/expenses/DownloadMenu";
+import { ExpenseDetailView } from "@/components/ExpenseDetailView";
+import { DataPageLayout } from "@/components/DataPageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DataPageHeader, DataTable, StatusBadge } from "@/components/DataPageLayout";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Check, X, Eye, Loader2, ScanLine, FileText, Receipt, CircleCheck, CircleX, CircleDashed, AlertCircle, AlertTriangle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import ExpenseDetailView from "@/components/ExpenseDetailView";
-import { scanReceipt } from "@/lib/scanReceipt";
-import { getFxRate } from "@/lib/getFxRate";
+import { Plus, ScanLine } from "lucide-react";
+import { fmtCurrency, fmtDate } from "@/lib/formatters";
+import type { Expense } from "@/types";
 
-function _esc(v: unknown): string {
-  const s = v == null ? "" : String(v);
-  return (s.indexOf(",") > -1 || s.indexOf('"') > -1) ? '"' + s.replace(/"/g, '\"\\"\"') + '"' : s;
-}
-function downloadExpensesCsv(rows: unknown[]) {
-  const h = ["Date","Title","Currency","Amount","Base EUR","FX Rate","Category","Status","Description","VAT Amount","VAT Rate","TRN"];
-  const body = (rows as any[]).map(function(e) {
-    const cat = e.expense_categories ? e.expense_categories.name : "";
-    return [e.expense_date,e.title,e.currency,e.amount,e.base_amount||"",e.fx_rate||1,cat,e.status,e.description||"",e.vat_amount||0,e.vat_rate||0,e.tax_registration_number||""].map(_esc).join(",");
-  });
-  const csv = [h.join(",")].concat(body).join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"}));
-  a.download = "expenses-" + new Date().toISOString().slice(0,10) + ".csv";
-  a.click();
-}
-function downloadExpensesPdf(rows: unknown[]) {
-  const th = function(s: string) { return "<th style=\"background:#1e3a5f;color:#fff;padding:6px 8px\">" + s + "</th>"; };
-  const td = function(s: string) { return "<td style=\"padding:5px 8px;border-bottom:1px solid #eee\">" + s + "</td>"; };
-  const hdr = "<tr>" + ["Date","Title","CCY","Amount","EUR","Category","Status","VAT"].map(th).join("") + "</tr>";
-  const bdy = (rows as any[]).map(function(e) {
-    const cat = e.expense_categories ? e.expense_categories.name : "";
-    return "<tr>" + [
-      e.expense_date||"", e.title||"", e.currency||"",
-      Number(e.amount||0).toFixed(2),
-      e.base_amount ? Number(e.base_amount).toFixed(2) : "",
-      cat, e.status||"", String(e.vat_amount||0)
-    ].map(td).join("") + "</tr>";
-  }).join("");
-  const st = "<style>table{width:100%;border-collapse:collapse;font-size:11px;font-family:Arial}</style>";
-  const html = "<html><head>" + st + "</head><body><h2>Expenses</h2><table><thead>" + hdr + "</thead><tbody>" + bdy + "</tbody></table></body></html>";
-  const w = window.open("", "_blank");
-  if (w) { w.document.write(html); w.document.close(); w.print(); }
-}
+const CURRENCIES = ["EUR","USD","GBP","CHF","AED","SAR","TND","CAD","AUD","JPY","CNY","INR","BRL","SEK","NOK","DKK","PLN","CZK","HUF","TRY","SGD","HKD","NZD","MXN","ZAR","KRW"];
+const STATUS_TABS = ["All Expenses","Pending Approval","Approved","Rejected","Drafts","Reimbursed"];
+const STATUS_MAP: Record<string,string> = { "Pending Approval":"submitted","Approved":"approved","Rejected":"rejected","Drafts":"draft","Reimbursed":"reimbursed" };
 
-// Ã¢ÂÂÃ¢ÂÂ Download helpers Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-
-
-
-// Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+const emptyForm = { title:"", description:"", amount:"", expense_date: new Date().toISOString().split("T")[0], category_id:"", currency:"EUR", vat_amount:"", vat_rate:"", tax_registration_number:"" };
 
 export default function ExpensesPage() {
-  const { orgId, role } = useOrganization();
   const { user } = useAuth();
+  const { expenses, isLoading, createExpense, isCreating } = useExpenses();
+  const { categories, matchCategory } = useCategories();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+
   const [open, setOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("all");
-  const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [form, setForm] = useState(emptyForm);
   const [scanning, setScanning] = useState(false);
-  const [ocrResult, setOcrResult] = useState<any>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState("All Expenses");
+  const [search, setSearch] = useState("");
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
-  const isApprover = role === "company_admin" || role === "finance_manager" || role === "approver";
-
-  const { data: allExpenses = [], isLoading } = useQuery({
-    queryKey: ["expenses", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("expenses").select("*, expense_categories(name, code)").eq("org_id", orgId!).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!orgId,
+  const filtered = expenses.filter(e => {
+    const matchTab = tab === "All Expenses" || e.status === STATUS_MAP[tab];
+    const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase());
+    return matchTab && matchSearch;
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["expense-categories", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("expense_categories").select("*").eq("org_id", orgId!).eq("is_active", true);
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!orgId,
-  });
-
-  // Tab counts
-  const counts = {
-    all: allExpenses.length,
-    submitted: allExpenses.filter((e: any) => e.status === "submitted").length,
-    approved: allExpenses.filter((e: any) => e.status === "approved").length,
-    rejected: allExpenses.filter((e: any) => e.status === "rejected").length,
-    draft: allExpenses.filter((e: any) => e.status === "draft").length,
-    reimbursed: allExpenses.filter((e: any) => e.status === "reimbursed").length,
-  };
-
-  const tabs = [
-    { label: "All Expenses", value: "all", count: counts.all },
-    { label: "Pending Approval", value: "submitted", count: counts.submitted },
-    { label: "Approved", value: "approved", count: counts.approved },
-    { label: "Rejected", value: "rejected", count: counts.rejected },
-    { label: "Drafts", value: "draft", count: counts.draft },
-    { label: "Reimbursed", value: "reimbursed", count: counts.reimbursed },
-  ];
-
-  const expenses = allExpenses
-    .filter((e: any) => activeTab === "all" || e.status === activeTab)
-    .filter((e: any) => !search || e.title.toLowerCase().includes(search.toLowerCase()));
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      let receipt_url: string | null = null;
-      if (receiptFile && user) {
-        const path = `${user.id}/${Date.now()}_${receiptFile.name}`;
-        const { error: uploadError } = await supabase.storage.from("documents").upload(path, receiptFile);
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
-        receipt_url = urlData.publicUrl;
-      }
-      const { error } = await supabase.from("expenses").insert({
-        org_id: orgId!, submitter_id: user!.id, title: form.title,
-        description: form.description || null, amount: parseFloat(form.amount),
-        expense_date: form.expense_date, category_id: form.category_id || null,
-        currency: form.currency, receipt_url, status: "submitted", submitted_at: new Date().toISOString(),
-        vat_amount: ocrResult?.vat_amount || null,
-        vat_rate: ocrResult?.vat_rate || null,
-        tax_registration_number: ocrResult?.tax_registration_number || null,
+  async function handleScan(file: File) {
+    setScanning(true);
+    try {
+      const dataUrl: string = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => { const s = reader.result as string; res(s.indexOf(",") !== -1 ? s.split(",")[1] : s); };
+        reader.onerror = () => rej(new Error("Read failed"));
+        reader.readAsDataURL(file);
       });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      setOpen(false);
-      setForm({ title: "", description: "", amount: "", expense_date: new Date().toISOString().split("T")[0], category_id: "", currency: "EUR" });
-      setReceiptFile(null);
-      setOcrResult(null);
-      toast({ title: "Expense submitted" });
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
+      const { data, error } = await scanReceipt(dataUrl, file.type);
+      if (error || !data) { toast({ title:"Scan failed", description: error?.message, variant:"destructive" }); return; }
+      const catId = matchCategory(data.category_suggestion);
+      setForm(f => ({ ...f,
+        title: data.merchant_name || f.title,
+        amount: String(data.amount || f.amount),
+        currency: data.currency || f.currency,
+        expense_date: data.date || f.expense_date,
+        description: data.description || f.description,
+        category_id: catId || f.category_id,
+        vat_amount: String(data.vat_amount || ""),
+        vat_rate: String(data.vat_rate || ""),
+        tax_registration_number: data.tax_registration_number || f.tax_registration_number,
+      }));
+    } finally { setScanning(false); }
+  }
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status, reason }: { id: string; status: string; reason?: string }) => {
-      const updates: any = {
-        status,
-        ...(status === "approved" ? { approved_at: new Date().toISOString(), approver_id: user!.id } : {}),
-        ...(status === "rejected" ? { rejected_at: new Date().toISOString(), approver_id: user!.id, rejection_reason: reason } : {}),
-      };
-      const { error } = await supabase.from("expenses").update(updates).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      setDetailOpen(false);
-      toast({ title: "Expense updated" });
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseFloat(form.amount) || 0;
+    const fxRate = await getFxRate(form.currency, "EUR", form.expense_date);
+    createExpense({
+      org_id: user?.id, user_id: user?.id, title: form.title,
+      description: form.description || null, amount: amt,
+      expense_date: form.expense_date, category_id: form.category_id || null,
+      currency: form.currency, fx_rate: fxRate,
+      base_amount: Math.round(amt * fxRate * 100) / 100,
+      base_currency: "EUR",
+      vat_amount: parseFloat(form.vat_amount) || null,
+      vat_rate: parseFloat(form.vat_rate) || null,
+      tax_registration_number: form.tax_registration_number || null,
+      status: "submitted",
+    } as any);
+    setOpen(false);
+    setForm(emptyForm);
+    toast({ title: "Expense submitted" });
+  }
 
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  const statusColor: Record<string,string> = { submitted:"bg-orange-100 text-orange-700", approved:"bg-green-100 text-green-700", rejected:"bg-red-100 text-red-700", draft:"bg-gray-100 text-gray-700", reimbursed:"bg-blue-100 text-blue-700" };
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px]">
-      <DataPageHeader
-        title="Expenses"
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by title, merchant..."
-        onDownload={function(r: unknown) { const rows = (r as any[]) || allExpenses; if (window.confirm("OK = CSV  |  Cancel = PDF")) { downloadExpensesCsv(rows); } else { downloadExpensesPdf(rows); } }}}}
-        actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-1.5" />New expense</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Submit expense</DialogTitle></DialogHeader>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                const fxRate = await getFxRate(form.currency, "EUR", form.expense_date);
-                createMutation.mutate({ ...form, title: e.target.value ,
-          fx_rate: fxRate,
-          base_amount: Math.round(parseFloat(form.amount) * fxRate * 100) / 100,
-          base_currency: "EUR"
-        });
-              }} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Title *</Label>
-                  <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Amount *</Label>
-                    <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Currency *</Label>
-                    <Select value={form.currency} onValueChange={(v) => setForm({ ...form, currency: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR", "BRL", "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "TRY", "AED", "SAR", "SGD", "HKD", "NZD", "MXN", "ZAR", "KRW"].map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Date *</Label>
-                    <Input type="date" value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} required />
-                  </div>
-                </div>
-                {categories.length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label>Category</Label>
-                    <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>{categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="space-y-1.5">
-                  <Label>Description</Label>
-                  <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Receipt / Invoice</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0] || null;
-                        setReceiptFile(file);
-                        if (!file) return;
-                        setScanning(true);
-                        try {
-                          // Convert to base64 for OCR
-                          const reader = new FileReader();
-                          const base64 = await new Promise<string>((resolve, reject) => {
-                            reader.onload = () => { const dataUrl = reader.result as string; resolve(dataUrl.indexOf(",") !== -1 ? dataUrl.split(",")[1] : dataUrl); };
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                          });
-const { data: result, error } = await scanReceipt(base64, file.type);
-                                                      if (error) throw error;
-                                                      if (result) {
-                            setOcrResult(result);
-                            setForm((prev) => ({
-                              ...prev,
-                              title: result.merchant_name || prev.title,
-                              amount: result.amount != null ? result.amount.toString() : prev.amount,
-                              currency: result.currency || prev.currency,
-                              expense_date: result.date || prev.expense_date,
-                              description: result.description || prev.description,
-                              category_id: prev.category_id,
-                              tax_registration_number: result.tax_registration_number || prev.tax_registration_number,
-                            }));
-                            // Try to match category
-                            if (result.category_suggestion && categories.length > 0) {
-                              const _cmap = {"travel":"TRAVEL","software & saas":"SOFTWARE","meals & entertainment":"MEALS","equipment":"EQUIPMENT","marketing":"MARKETING","office supplies":"OFFICE","utilities":"TELECOM","professional services":"TRAINING","other":"OTHER"};
-                              const _code = _cmap[(result.category_suggestion||"").toLowerCase().trim()] || "OTHER";
-                              const match = categories.find((c: any) => c.code === _code) || categories.find((c: any) => c.name.toLowerCase() === (result.category_suggestion||"").toLowerCase().trim());
-                              if (match) setForm((prev) => ({ ...prev, category_id: match.id }));
-                            }
-                            toast({ title: "Receipt scanned", description: "Fields auto-filled from document" });
-                          }
-                        } catch (err: any) {
-                          console.error("OCR scan error:", err);
-                          toast({ title: "Scan failed", description: err.message || "Could not extract data", variant: "destructive" });
-                        } finally {
-                          setScanning(false);
-                        }
-                      }}
-                    />
-                    {scanning && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                    {!scanning && receiptFile && <ScanLine className="h-4 w-4 text-success" />}
-                  </div>
-                  {scanning && <p className="text-xs text-muted-foreground">Scanning document and extracting data...</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Submitting..." : "Submit expense"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        }
-      />
-
-      {/* Missing receipt warning banner */}
-      {(() => {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const missing = allExpenses.filter(
-          (e: any) => !e.receipt_url && new Date(e.created_at) < sevenDaysAgo && e.status !== "draft"
-        );
-        if (missing.length === 0) return null;
-        return (
-          <div className="mt-4 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3.5">
-            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                {missing.length} expense{missing.length > 1 ? "s" : ""} missing receipt{missing.length > 1 ? "s" : ""}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="ml-auto flex-shrink-0 text-xs h-7"
-              onClick={() => { setActiveTab("all"); setSearch(""); }}
-            >
-              View all
-            </Button>
-          </div>
-        );
-      })()}
-
-      <div className="mt-4">
-        <DataTable
-          headers={["Title", "Date", "Amount", "Category", "Checks", "Status", ""]}
-          isLoading={isLoading}
-          isEmpty={expenses.length === 0}
-          emptyMessage="No expenses found."
-          hasCheckbox
-          allChecked={expenses.length > 0 && selected.size === expenses.length}
-          onCheckAll={(checked) => setSelected(checked ? new Set(expenses.map((e: any) => e.id)) : new Set())}
-        >
-          {expenses.map((exp: any) => {
-            const hasReceipt = !!exp.receipt_url;
-            const hasVat = exp.vat_amount > 0 || exp.vat_rate > 0;
-            const isApproved = exp.status === "approved" || exp.status === "reimbursed";
-            const isRejected = exp.status === "rejected";
-
-            return (
-              <tr key={exp.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                <td className="w-10 px-4 py-3">
-                  <input type="checkbox" checked={selected.has(exp.id)} onChange={() => toggleSelect(exp.id)} className="rounded border-border" />
-                </td>
-                <td className="px-4 py-3">
-                  <p className="text-sm font-medium">{exp.title}</p>
-                  {exp.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{exp.description}</p>}
-                </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
-                <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "ÃÂ¢ÃÂÃÂ"}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className={`h-5 w-5 rounded-full flex items-center justify-center ${hasReceipt ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                          <Receipt className="h-3 w-3" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">{hasReceipt ? "Receipt uploaded" : "No receipt"}</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className={`h-5 w-5 rounded-full flex items-center justify-center ${hasVat ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                          <FileText className="h-3 w-3" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">{hasVat ? `VAT: ${exp.vat_rate}% (${Number(exp.vat_amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })})` : "No VAT data"}</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className={`h-5 w-5 rounded-full flex items-center justify-center ${isApproved ? "bg-success/10 text-success" : isRejected ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                          {isApproved ? <CircleCheck className="h-3 w-3" /> : isRejected ? <CircleX className="h-3 w-3" /> : <CircleDashed className="h-3 w-3" />}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">{isApproved ? "Approved" : isRejected ? "Rejected" : "Pending approval"}</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </td>
-                <td className="px-4 py-3"><StatusBadge status={exp.status} /></td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-0.5">
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setSelectedExpense(exp); setDetailOpen(true); }}>
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                    {isApprover && exp.status === "submitted" && (
-                      <>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success hover:text-success" onClick={() => updateStatus.mutate({ id: exp.id, status: "approved" })}>
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => updateStatus.mutate({ id: exp.id, status: "rejected", reason: "Rejected by approver" })}>
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </DataTable>
+    <DataPageLayout title="Expenses">
+      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+        <Input placeholder="Search by title, merchant..." value={search} onChange={e=>setSearch(e.target.value)} className="max-w-xs" />
+        <div className="flex gap-2">
+          <DownloadMenu expenses={filtered} />
+          <Button onClick={()=>setOpen(true)} className="gap-2"><Plus className="h-4 w-4"/>New expense</Button>
+        </div>
       </div>
 
-      {/* Alaan-style Detail Dialog */}
+      <Tabs value={tab} onValueChange={setTab} className="mb-4">
+        <TabsList>
+          {STATUS_TABS.map(s=>(
+            <TabsTrigger key={s} value={s}>
+              {s}
+              {s==="All Expenses" && <Badge variant="secondary" className="ml-1">{expenses.length}</Badge>}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-40 text-muted-foreground">Loading...</div>
+      ) : (
+        <div className="rounded-md border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                {["Title","Date","Amount","Base (EUR)","Category","Status",""].map(h=>(
+                  <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(e=>(
+                <tr key={e.id} className="border-t hover:bg-muted/30 cursor-pointer" onClick={()=>{setSelectedExpense(e);setDetailOpen(true);}}>
+                  <td className="px-4 py-3 font-medium">{e.title}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{fmtDate(e.expense_date)}</td>
+                  <td className="px-4 py-3">{fmtCurrency(e.amount, e.currency)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{e.base_amount ? fmtCurrency(e.base_amount,"EUR") : "—"}</td>
+                  <td className="px-4 py-3">{e.expense_categories?.name || "—"}</td>
+                  <td className="px-4 py-3"><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + (statusColor[e.status]||"")}>{e.status}</span></td>
+                  <td className="px-4 py-3"></td>
+                </tr>
+              ))}
+              {filtered.length===0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No expenses found</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* New Expense Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Submit expense</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div><Label>Title *</Label><Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} required /></div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Amount *</Label><Input type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} required /></div>
+              <div><Label>Currency *</Label>
+                <Select value={form.currency} onValueChange={v=>setForm({...form,currency:v})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent>{CURRENCIES.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Date *</Label><Input type="date" value={form.expense_date} onChange={e=>setForm({...form,expense_date:e.target.value})} required /></div>
+            </div>
+            <div><Label>Category</Label>
+              <Select value={form.category_id} onValueChange={v=>setForm({...form,category_id:v})}>
+                <SelectTrigger><SelectValue placeholder="Select"/></SelectTrigger>
+                <SelectContent>{categories.map(c=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Description</Label><textarea className="w-full border rounded px-3 py-2 text-sm min-h-[80px] resize-none" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>VAT Amount</Label><Input type="number" step="0.01" value={form.vat_amount} onChange={e=>setForm({...form,vat_amount:e.target.value})}/></div>
+              <div><Label>VAT Rate %</Label><Input type="number" step="0.01" value={form.vat_rate} onChange={e=>setForm({...form,vat_rate:e.target.value})}/></div>
+              <div><Label>TRN</Label><Input value={form.tax_registration_number} onChange={e=>setForm({...form,tax_registration_number:e.target.value})}/></div>
+            </div>
+            <div>
+              <Label>Receipt / Invoice</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <label className="flex items-center gap-2 px-3 py-2 border rounded cursor-pointer text-sm hover:bg-muted/50">
+                  {scanning ? <span className="animate-spin">⟳</span> : <ScanLine className="h-4 w-4"/>}
+                  {scanning ? "Scanning..." : "Choose File"}
+                  <input type="file" className="hidden" accept="image/*,application/pdf" onChange={e=>{ const f=e.target.files?.[0]; if(f) handleScan(f); }} disabled={scanning}/>
+                </label>
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={isCreating}>{isCreating?"Submitting...":"Submit expense"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-[900px] p-0 overflow-hidden">
           <DialogHeader className="sr-only"><DialogTitle>Expense details</DialogTitle></DialogHeader>
           {selectedExpense && (
             <ExpenseDetailView
-              expense={allExpenses.find((e: any) => e.id === selectedExpense.id) || selectedExpense}
-              onClose={() => setDetailOpen(false)}
+              expense={expenses.find((e:any)=>e.id===selectedExpense.id)||selectedExpense}
+              onClose={()=>setDetailOpen(false)}
             />
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </DataPageLayout>
   );
 }
