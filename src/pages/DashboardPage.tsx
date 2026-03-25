@@ -1,288 +1,167 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useMemo } from "react";
+import { useExpenses } from "@/hooks/useExpenses";
+import { DataPageLayout } from "@/components/DataPageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-
-const taxObligations = [
-  { name: "USt-Voranmeldung Q1", date: "10 Apr", status: "Due",      color: "destructive" as const },
-  { name: "Körperschaftsteuer",  date: "31 Mai", status: "Prep",     color: "warning"     as const },
-  { name: "Gewerbesteuer",       date: "15 Jun", status: "On track", color: "success"     as const },
-];
-
-const StatusBadge = ({ status, color }: { status: string; color: "destructive" | "warning" | "success" }) => {
-  const styles = {
-    destructive: "bg-destructive/10 text-destructive",
-    warning:     "bg-warning/10 text-warning",
-    success:     "bg-success/10 text-success",
-  };
-  return <span className={cn("text-xs font-medium px-2 py-0.5 rounded", styles[color])}>{status}</span>;
-};
-
-const fmt = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+import { fmtEur, fmtCurrency } from "@/lib/formatters";
+import { TrendingUp, TrendingDown, Receipt, Clock } from "lucide-react";
 
 export default function DashboardPage() {
-  const { orgId } = useOrganization();
-  const navigate = useNavigate();
+  const { expenses, isLoading } = useExpenses();
 
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const thisMonth = expenses.filter(e => {
+      const d = new Date(e.expense_date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const lastMonth = expenses.filter(e => {
+      const d = new Date(e.expense_date);
+      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear();
+    });
 
-  const { data: monthlySpend = 0 } = useQuery({
-    queryKey: ["dashboard-monthly-spend", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses").select("amount")
-        .eq("org_id", orgId!).in("status", ["approved", "reimbursed"])
-        .gte("expense_date", startOfMonth.split("T")[0]);
-      if (error) throw error;
-      return (data || []).reduce((s, e) => s + Number(e.amount), 0);
+    const totalEur = (arr: typeof expenses) =>
+      arr.reduce((s, e) => s + (e.base_amount ?? e.amount), 0);
+
+    const thisTotal = totalEur(thisMonth);
+    const lastTotal = totalEur(lastMonth);
+    const change = lastTotal > 0 ? ((thisTotal - lastTotal) / lastTotal) * 100 : 0;
+
+    const pending = expenses.filter(e => e.status === "submitted").length;
+    const approved = expenses.filter(e => e.status === "approved").length;
+
+    // Spend by category this month
+    const byCategory: Record<string, number> = {};
+    thisMonth.forEach(e => {
+      const cat = e.expense_categories?.name || "Uncategorized";
+      byCategory[cat] = (byCategory[cat] || 0) + (e.base_amount ?? e.amount);
+    });
+    const topCategories = Object.entries(byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    return { thisTotal, lastTotal, change, pending, approved, topCategories, thisMonth };
+  }, [expenses]);
+
+  const cards = [
+    {
+      title: "This Month (EUR)",
+      value: fmtEur(kpis.thisTotal),
+      sub: kpis.change >= 0
+        ? "+" + kpis.change.toFixed(1) + "% vs last month"
+        : kpis.change.toFixed(1) + "% vs last month",
+      icon: kpis.change >= 0 ? TrendingUp : TrendingDown,
+      color: kpis.change >= 0 ? "text-red-500" : "text-green-500",
     },
-    enabled: !!orgId,
-  });
-
-  const { data: cashPosition = 0 } = useQuery({
-    queryKey: ["dashboard-cash", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("bank_accounts").select("balance").eq("org_id", orgId!);
-      if (error) throw error;
-      return (data || []).reduce((s, a) => s + Number(a.balance), 0);
+    {
+      title: "Last Month (EUR)",
+      value: fmtEur(kpis.lastTotal),
+      sub: kpis.lastTotal > 0 ? "Previous period" : "No data",
+      icon: Receipt,
+      color: "text-blue-500",
     },
-    enabled: !!orgId,
-  });
-
-  const { data: pendingExpenses = [] } = useQuery({
-    queryKey: ["dashboard-pending", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses").select("id, title, amount, expense_date")
-        .eq("org_id", orgId!).eq("status", "submitted")
-        .order("created_at", { ascending: false }).limit(8);
-      if (error) throw error;
-      return data || [];
+    {
+      title: "Pending Approval",
+      value: String(kpis.pending),
+      sub: "Awaiting review",
+      icon: Clock,
+      color: "text-orange-500",
     },
-    enabled: !!orgId,
-  });
-
-  const { data: missingReceipts = 0 } = useQuery({
-    queryKey: ["dashboard-missing-receipts", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses").select("id").eq("org_id", orgId!)
-        .is("receipt_url", null).in("status", ["submitted", "approved"]);
-      if (error) throw error;
-      return (data || []).length;
+    {
+      title: "Approved",
+      value: String(kpis.approved),
+      sub: "All time",
+      icon: TrendingUp,
+      color: "text-green-500",
     },
-    enabled: !!orgId,
-  });
-
-  const { data: recentTxns = [] } = useQuery({
-    queryKey: ["dashboard-txns", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transactions").select("id, merchant_name, amount, transaction_date")
-        .eq("org_id", orgId!).order("transaction_date", { ascending: false }).limit(5);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!orgId,
-  });
-
-  const { data: categorySpend = [] } = useQuery({
-    queryKey: ["dashboard-category-spend", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses").select("category_id, amount, expense_categories(name)")
-        .eq("org_id", orgId!).in("status", ["approved", "reimbursed"]);
-      if (error) throw error;
-      const map = new Map<string, { name: string; total: number }>();
-      for (const e of data || []) {
-        const name = (e as any).expense_categories?.name || "Uncategorized";
-        const existing = map.get(name) || { name, total: 0 };
-        existing.total += Number(e.amount);
-        map.set(name, existing);
-      }
-      return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 6);
-    },
-    enabled: !!orgId,
-  });
-
-  const maxCategory = categorySpend.length > 0 ? Math.max(...categorySpend.map(c => c.total)) : 0;
+  ];
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px]">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Overview</p>
-      </div>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1.5">Total spend this month</p>
-            <p className="text-2xl font-semibold">{fmt(monthlySpend)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1.5">Cash position</p>
-            <p className="text-2xl font-semibold">{fmt(cashPosition)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Across linked accounts</p>
-          </CardContent>
-        </Card>
-        <Card
-          className="cursor-pointer hover:border-warning/50 transition-colors"
-          onClick={() => navigate("/expenses")}
-        >
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1.5">Pending approvals</p>
-            <p className={cn("text-2xl font-semibold", pendingExpenses.length > 0 && "text-warning")}>
-              {pendingExpenses.length}
-            </p>
-            {pendingExpenses.length > 0 && (
-              <p className="text-xs text-warning/80 mt-0.5 flex items-center gap-1">
-                Review in Expenses <ArrowRight className="h-3 w-3" />
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1.5">Missing receipts</p>
-            <p className={cn("text-2xl font-semibold", missingReceipts > 0 && "text-destructive")}>
-              {missingReceipts}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Pending Approvals — view only, no actions */}
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">Pending approvals</CardTitle>
-            {pendingExpenses.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/expenses")}
-              >
-                View all <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-0">
-            {pendingExpenses.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">No pending approvals</p>
-            ) : (
-              pendingExpenses.map((e: any) => (
-                <div
-                  key={e.id}
-                  className="flex items-center gap-3 py-3 border-b last:border-0 cursor-pointer hover:bg-muted/30 -mx-2 px-2 rounded transition-colors"
-                  onClick={() => navigate("/expenses")}
-                  title="Open in Expenses to review and approve"
-                >
-                  <div className="w-8 h-8 rounded-full bg-sidebar-primary/15 flex items-center justify-center shrink-0">
-                    <span className="text-[11px] font-semibold text-sidebar-primary">
-                      {e.title.substring(0, 2).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(e.expense_date).toLocaleDateString("de-DE")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-semibold">{fmt(Number(e.amount))}</span>
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-warning/10 text-warning uppercase tracking-wide">
-                      Pending
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Spend by Category */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Spend by category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {categorySpend.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No expense data yet</p>
-            ) : (
-              <div className="space-y-3">
-                {categorySpend.map((c) => (
-                  <div key={c.name}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>{c.name}</span>
-                      <span className="font-medium">{fmt(c.total)}</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${maxCategory > 0 ? (c.total / maxCategory) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Tax Obligations */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Tax obligations</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-0">
-            {taxObligations.map((tax, i) => (
-              <div key={i} className="flex items-center gap-3 py-3 border-b last:border-0">
-                <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  tax.color === "destructive" && "bg-destructive",
-                  tax.color === "warning"     && "bg-warning",
-                  tax.color === "success"     && "bg-success",
-                )} />
-                <span className="text-sm flex-1">{tax.name}</span>
-                <span className="text-sm text-muted-foreground mr-2">{tax.date}</span>
-                <StatusBadge status={tax.status} color={tax.color} />
-              </div>
+    <DataPageLayout title="Dashboard">
+      {isLoading ? (
+        <div className="flex items-center justify-center h-40 text-muted-foreground">Loading...</div>
+      ) : (
+        <div className="space-y-6">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {cards.map(c => (
+              <Card key={c.title}>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{c.title}</CardTitle>
+                  <c.icon className={"h-4 w-4 " + c.color} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{c.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{c.sub}</p>
+                </CardContent>
+              </Card>
             ))}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Recent Transactions */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Recent transactions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-0">
-            {recentTxns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No transactions yet</p>
-            ) : (
-              recentTxns.map((t: any) => (
-                <div key={t.id} className="flex items-center gap-3 py-3 border-b last:border-0">
-                  <span className="text-sm flex-1 font-medium">{t.merchant_name}</span>
-                  <span className="text-sm font-semibold">{fmt(Number(t.amount))}</span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {new Date(t.transaction_date).toLocaleDateString("de-DE")}
-                  </span>
+          {/* Spend by Category */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Top Categories — This Month</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {kpis.topCategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No expenses this month</p>
+              ) : (
+                <div className="space-y-3">
+                  {kpis.topCategories.map(([cat, amt]) => {
+                    const pct = kpis.thisTotal > 0 ? (amt / kpis.thisTotal) * 100 : 0;
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">{cat}</span>
+                          <span className="text-muted-foreground">{fmtEur(amt)} ({pct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full" style={{ width: pct + "%" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Expenses */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent Expenses</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    {["Title","Date","Amount","Category","Status"].map(h => (
+                      <th key={h} className="px-4 py-2 text-left font-medium text-muted-foreground text-xs">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenses.slice(0, 10).map(e => (
+                    <tr key={e.id} className="border-t">
+                      <td className="px-4 py-2 font-medium">{e.title}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{e.expense_date}</td>
+                      <td className="px-4 py-2">{fmtCurrency(e.amount, e.currency)}</td>
+                      <td className="px-4 py-2">{e.expense_categories?.name || "—"}</td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-muted">{e.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {expenses.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">No expenses yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </DataPageLayout>
   );
 }
