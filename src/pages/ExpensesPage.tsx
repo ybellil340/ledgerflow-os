@@ -17,7 +17,7 @@ import ExpenseDetailView from "@/components/ExpenseDetailView";
 import { scanReceipt } from "@/lib/scanReceipt";
 import { getFxRate } from "@/lib/getFxRate";
 
-// ── Download helpers ──────────────────────────────────────────────
+// ââ Download helpers ââââââââââââââââââââââââââââââââââââââââââââââ
 function escapeCsv(v: any): string {
   if (v == null) return '';
   const s = String(v);
@@ -51,31 +51,30 @@ function downloadCsv(expenses: any[]) {
 }
 
 function downloadPdf(expenses: any[]) {
-  const rows = expenses.map(e => `<tr>
-    <td>${e.expense_date||''}</td><td>${e.title||''}</td>
-    <td>${e.currency} ${Number(e.amount).toFixed(2)}</td>
-    <td>${e.base_amount ? 'EUR '+Number(e.base_amount).toFixed(2) : ''}</td>
-    <td>${e.expense_categories?.name||'—'}</td>
-    <td>${e.status||''}</td>
-    <td>${e.description||''}</td>
-    <td>${e.vat_amount||0}</td>
-  </tr>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expenses Report</title>
-  <style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}h1{font-size:16px;margin-bottom:4px}
-  table{width:100%;border-collapse:collapse;margin-top:12px}
-  th{background:#1e3a5f;color:#fff;padding:6px 8px;text-align:left;font-size:10px}
-  td{padding:5px 8px;border-bottom:1px solid #eee}
-  tr:nth-child(even){background:#f9f9f9}.meta{color:#666;font-size:10px;margin-bottom:8px}</style></head>
-  <body><h1>Expenses Report</h1>
-  <div class="meta">Generated: ${new Date().toLocaleString()} &nbsp;|&nbsp; Total expenses: ${expenses.length}</div>
-  <table><thead><tr><th>Date</th><th>Title</th><th>Amount</th><th>Base (EUR)</th><th>Category</th><th>Status</th><th>Description</th><th>VAT</th></tr></thead>
-  <tbody>${rows}</tbody></table></body></html>`;
-  const w = window.open('','_blank');
-  w?.document.write(html);
-  w?.document.close();
-  w?.print();
+  const th = function(s: string) { return '<th style="background:#1e3a5f;color:#fff;padding:6px 8px;text-align:left">' + s + '</th>'; };
+  const td = function(s: string) { return '<td style="padding:5px 8px;border-bottom:1px solid #eee">' + s + '</td>'; };
+  const header = '<tr>' + th('Date') + th('Title') + th('Currency') + th('Amount') + th('Base EUR') + th('Category') + th('Status') + th('VAT') + '</tr>';
+  const rows = expenses.map(function(e: any) {
+    return '<tr>' +
+      td(e.expense_date || '') +
+      td(e.title || '') +
+      td(e.currency || '') +
+      td(Number(e.amount || 0).toFixed(2)) +
+      td(e.base_amount ? Number(e.base_amount).toFixed(2) : '') +
+      td((e.expense_categories && e.expense_categories.name) ? e.expense_categories.name : '—') +
+      td(e.status || '') +
+      td(String(e.vat_amount || 0)) +
+    '</tr>';
+  }).join('');
+  const style = '<style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}h1{font-size:16px}table{width:100%;border-collapse:collapse;margin-top:12px}</style>';
+  const html = '<html><head><meta charset="utf-8"><title>Expenses</title>' + style + '</head><body>' +
+    '<h1>Expenses Report — ' + new Date().toLocaleDateString() + '</h1>' +
+    '<p style="color:#666;font-size:10px">Total: ' + expenses.length + ' expenses</p>' +
+    '<table><thead>' + header + '</thead><tbody>' + rows + '</tbody></table></body></html>';
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); w.print(); }
 }
-// ─────────────────────────────────────────────────────────────────
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 export default function ExpensesPage() {
   const { orgId, role } = useOrganization();
@@ -346,7 +345,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {missing.map((e: any) => e.title).slice(0, 3).join(", ")}
-                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
+                {missing.length > 3 ? ` and ${missing.length - 3} more` : ""} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ older than 7 days without a receipt attached.
               </p>
             </div>
             <Button
@@ -388,7 +387,7 @@ const { data: result, error } = await scanReceipt(base64, file.type);
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(exp.expense_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "2-digit" })}</td>
                 <td className="px-4 py-3 text-sm font-medium">{Number(exp.amount).toLocaleString("de-DE", { style: "currency", currency: exp.currency || "EUR" })}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "â"}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{exp.expense_categories?.name || "Ã¢ÂÂ"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <Tooltip>
