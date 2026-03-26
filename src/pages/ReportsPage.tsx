@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { DownloadMenu } from "@/components/expenses/DownloadMenu";
-import { DataPageLayout } from "@/components/DataPageLayout";
+import { DataPageHeader } from "@/components/DataPageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtEur, fmtCurrency } from "@/lib/formatters";
@@ -45,7 +45,7 @@ export default function ReportsPage() {
   const maxMonth = Math.max(...Object.values(byMonth), 1);
 
   return (
-    <DataPageLayout title="Reports">
+    <div className="p-6"><DataPageHeader title="Reports" />
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
@@ -64,7 +64,7 @@ export default function ReportsPage() {
               { label: "Total Spend", value: fmtEur(totalEur) },
               { label: "Expenses", value: String(yearExpenses.length) },
               { label: "Avg per Month", value: fmtEur(totalEur / 12) },
-              { label: "Avg per Expense", value: yearExpenses.length > 0 ? fmtEur(totalEur / yearExpenses.length) : "—" },
+              { label: "Avg per Expense", value: yearExpenses.length > 0 ? fmtEur(totalEur / yearExpenses.length) : "â" },
             ].map(k => (
               <Card key={k.label}>
                 <CardHeader className="pb-1"><CardTitle className="text-sm text-muted-foreground">{k.label}</CardTitle></CardHeader>
@@ -75,7 +75,7 @@ export default function ReportsPage() {
 
           {/* Monthly bar chart */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Monthly Spend — {year} (EUR)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Monthly Spend â {year} (EUR)</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-end gap-2 h-40">
                 {MONTHS.map((m, i) => {
@@ -83,7 +83,7 @@ export default function ReportsPage() {
                   const pct = maxMonth > 0 ? (val / maxMonth) * 100 : 0;
                   return (
                     <div key={m} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground">{val > 0 ? fmtEur(val).replace("€","").trim() : ""}</span>
+                      <span className="text-xs text-muted-foreground">{val > 0 ? fmtEur(val).replace("â¬","").trim() : ""}</span>
                       <div className="w-full bg-muted rounded-t" style={{ height: Math.max(pct * 0.9, val > 0 ? 4 : 0) + "%" }}>
                         <div className="w-full h-full bg-primary rounded-t opacity-80" />
                       </div>
@@ -97,7 +97,7 @@ export default function ReportsPage() {
 
           {/* By Category */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Spend by Category — {year}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Spend by Category â {year}</CardTitle></CardHeader>
             <CardContent>
               {byCategory.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No data for {year}</p>
@@ -135,6 +135,6 @@ export default function ReportsPage() {
           </Card>
         </div>
       )}
-    </DataPageLayout>
+    </div>
   );
 }
