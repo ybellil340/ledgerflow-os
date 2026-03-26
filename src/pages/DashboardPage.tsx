@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useExpenses } from "@/hooks/useExpenses";
-import { DataPageLayout } from "@/components/DataPageLayout";
+import { DataPageHeader } from "@/components/DataPageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtEur, fmtCurrency } from "@/lib/formatters";
 import { TrendingUp, TrendingDown, Receipt, Clock } from "lucide-react";
@@ -77,7 +77,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <DataPageLayout title="Dashboard">
+    <div className="p-6"><DataPageHeader title="Dashboard" />
       {isLoading ? (
         <div className="flex items-center justify-center h-40 text-muted-foreground">Loading...</div>
       ) : (
@@ -101,7 +101,7 @@ export default function DashboardPage() {
           {/* Spend by Category */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Top Categories — This Month</CardTitle>
+              <CardTitle className="text-base">Top Categories â This Month</CardTitle>
             </CardHeader>
             <CardContent>
               {kpis.topCategories.length === 0 ? (
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                       <td className="px-4 py-2 font-medium">{e.title}</td>
                       <td className="px-4 py-2 text-muted-foreground">{e.expense_date}</td>
                       <td className="px-4 py-2">{fmtCurrency(e.amount, e.currency)}</td>
-                      <td className="px-4 py-2">{e.expense_categories?.name || "—"}</td>
+                      <td className="px-4 py-2">{e.expense_categories?.name || "â"}</td>
                       <td className="px-4 py-2">
                         <span className="px-2 py-0.5 rounded-full text-xs bg-muted">{e.status}</span>
                       </td>
@@ -162,6 +162,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       )}
-    </DataPageLayout>
+    </div>
   );
 }
