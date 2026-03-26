@@ -6,7 +6,7 @@ import { scanReceipt } from "@/lib/scanReceipt";
 import { getFxRate } from "@/lib/getFxRate";
 import { DownloadMenu } from "@/components/expenses/DownloadMenu";
 import { ExpenseDetailView } from "@/components/ExpenseDetailView";
-import { DataPageLayout } from "@/components/DataPageLayout";
+import { DataPageHeader } from "@/components/DataPageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,7 +95,7 @@ export default function ExpensesPage() {
   const statusColor: Record<string,string> = { submitted:"bg-orange-100 text-orange-700", approved:"bg-green-100 text-green-700", rejected:"bg-red-100 text-red-700", draft:"bg-gray-100 text-gray-700", reimbursed:"bg-blue-100 text-blue-700" };
 
   return (
-    <DataPageLayout title="Expenses">
+    <div className="p-6"><DataPageHeader title="Expenses" />
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <Input placeholder="Search by title, merchant..." value={search} onChange={e=>setSearch(e.target.value)} className="max-w-xs" />
         <div className="flex gap-2">
@@ -133,8 +133,8 @@ export default function ExpensesPage() {
                   <td className="px-4 py-3 font-medium">{e.title}</td>
                   <td className="px-4 py-3 text-muted-foreground">{fmtDate(e.expense_date)}</td>
                   <td className="px-4 py-3">{fmtCurrency(e.amount, e.currency)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{e.base_amount ? fmtCurrency(e.base_amount,"EUR") : "—"}</td>
-                  <td className="px-4 py-3">{e.expense_categories?.name || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{e.base_amount ? fmtCurrency(e.base_amount,"EUR") : "â"}</td>
+                  <td className="px-4 py-3">{e.expense_categories?.name || "â"}</td>
                   <td className="px-4 py-3"><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + (statusColor[e.status]||"")}>{e.status}</span></td>
                   <td className="px-4 py-3"></td>
                 </tr>
@@ -167,7 +167,7 @@ export default function ExpensesPage() {
                 <SelectContent>{categories.map(c=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Description</Label><textarea className="w-full border rounded px-3 py-2 text-sm min-h-[80px] resize-none" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+            <div><Label>Description</Label><textarea className="w-full border rounded px-3 py-2 text-sm min-h-[80px] resize-none" value={form.description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>)=>setForm({...form,description:e.target.value})}></textarea></div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label>VAT Amount</Label><Input type="number" step="0.01" value={form.vat_amount} onChange={e=>setForm({...form,vat_amount:e.target.value})}/></div>
               <div><Label>VAT Rate %</Label><Input type="number" step="0.01" value={form.vat_rate} onChange={e=>setForm({...form,vat_rate:e.target.value})}/></div>
@@ -177,7 +177,7 @@ export default function ExpensesPage() {
               <Label>Receipt / Invoice</Label>
               <div className="flex items-center gap-2 mt-1">
                 <label className="flex items-center gap-2 px-3 py-2 border rounded cursor-pointer text-sm hover:bg-muted/50">
-                  {scanning ? <span className="animate-spin">⟳</span> : <ScanLine className="h-4 w-4"/>}
+                  {scanning ? <span className="animate-spin">â³</span> : <ScanLine className="h-4 w-4"/>}
                   {scanning ? "Scanning..." : "Choose File"}
                   <input type="file" className="hidden" accept="image/*,application/pdf" onChange={e=>{ const f=e.target.files?.[0]; if(f) handleScan(f); }} disabled={scanning}/>
                 </label>
@@ -200,6 +200,6 @@ export default function ExpensesPage() {
           )}
         </DialogContent>
       </Dialog>
-    </DataPageLayout>
+    </div>
   );
 }
