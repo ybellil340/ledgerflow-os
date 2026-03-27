@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ScanLine } from "lucide-react";
+import { Plus, ScanLine, CheckCircle2 } from "lucide-react";
 import { fmtCurrency, fmtDate } from "@/lib/formatters";
 import type { Expense } from "@/types";
 
@@ -38,6 +38,8 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState("");
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [receiptUploaded, setReceiptUploaded] = useState(false);
+  const [amountMatched, setAmountMatched] = useState(false);
 
   const filtered = expenses.filter(e => {
     const matchTab = tab === "All Expenses" || e.status === STATUS_MAP[tab];
@@ -57,6 +59,7 @@ export default function ExpensesPage() {
       const { data, error } = await scanReceipt(dataUrl, file.type);
       if (error || !data) { toast({ title:"Scan failed", description: error?.message, variant:"destructive" }); return; }
       const catId = matchCategory(data.category_suggestion);
+      setReceiptUploaded(true);
       setForm(f => ({ ...f,
         title: data.merchant_name || f.title,
         amount: String(data.amount || f.amount),
@@ -68,6 +71,7 @@ export default function ExpensesPage() {
         vat_rate: String(data.vat_rate || ""),
         tax_registration_number: data.tax_registration_number || f.tax_registration_number,
       }));
+      if (data.amount) setAmountMatched(true);
     } finally { setScanning(false); }
   }
 
@@ -89,6 +93,8 @@ export default function ExpensesPage() {
     } as any);
     setOpen(false);
     setForm(emptyForm);
+    setReceiptUploaded(false);
+    setAmountMatched(false);
     toast({ title: "Expense submitted" });
   }
 
@@ -152,7 +158,7 @@ export default function ExpensesPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div><Label>Title *</Label><Input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} required /></div>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label>Amount *</Label><Input type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} required /></div>
+              <div><Label className="flex items-center gap-1">Amount *{amountMatched && <CheckCircle2 className="h-3.5 w-3.5 text-green-500 ml-1" />}</Label><Input type="number" step="0.01" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} required /></div>
               <div><Label>Currency *</Label>
                 <Select value={form.currency} onValueChange={v=>setForm({...form,currency:v})}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
@@ -174,11 +180,11 @@ export default function ExpensesPage() {
               <div><Label>TRN</Label><Input value={form.tax_registration_number} onChange={e=>setForm({...form,tax_registration_number:e.target.value})}/></div>
             </div>
             <div>
-              <Label>Receipt / Invoice</Label>
+              <Label className="flex items-center gap-2">Receipt / Invoice{receiptUploaded && <span className="inline-flex items-center gap-1 text-green-600 text-xs font-semibold"><CheckCircle2 className="h-3.5 w-3.5" />Uploaded</span>}{amountMatched && <span className="inline-flex items-center gap-1 text-green-600 text-xs font-semibold"><CheckCircle2 className="h-3.5 w-3.5" />Amount matched</span>}</Label>
               <div className="flex items-center gap-2 mt-1">
                 <label className="flex items-center gap-2 px-3 py-2 border rounded cursor-pointer text-sm hover:bg-muted/50">
                   {scanning ? <span className="animate-spin"></span> : <ScanLine className="h-4 w-4"/>}
-                  {scanning ? "Scanning..." : "Choose File"}
+                  {scanning ? "Scanning..." : receiptUploaded ? "Change file" : "Choose File"}
                   <input type="file" className="hidden" accept="image/*,application/pdf" onChange={e=>{ const f=e.target.files?.[0]; if(f) handleScan(f); }} disabled={scanning}/>
                 </label>
               </div>
