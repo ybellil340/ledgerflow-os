@@ -19,70 +19,35 @@ export default function DashboardPage() {
       const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear();
     });
-
-    const totalEur = (arr: typeof expenses) =>
-      arr.reduce((s, e) => s + (e.base_amount ?? e.amount), 0);
-
-    const thisTotal = totalEur(thisMonth);
-    const lastTotal = totalEur(lastMonth);
+    const total = (arr: typeof expenses) => arr.reduce((s, e) => s + (e.base_amount ?? e.amount), 0);
+    const thisTotal = total(thisMonth);
+    const lastTotal = total(lastMonth);
     const change = lastTotal > 0 ? ((thisTotal - lastTotal) / lastTotal) * 100 : 0;
-
     const pending = expenses.filter(e => e.status === "submitted").length;
     const approved = expenses.filter(e => e.status === "approved").length;
-
-    // Spend by category this month
     const byCategory: Record<string, number> = {};
     thisMonth.forEach(e => {
       const cat = e.expense_categories?.name || "Uncategorized";
       byCategory[cat] = (byCategory[cat] || 0) + (e.base_amount ?? e.amount);
     });
-    const topCategories = Object.entries(byCategory)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    return { thisTotal, lastTotal, change, pending, approved, topCategories, thisMonth };
+    const topCategories = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return { thisTotal, lastTotal, change, pending, approved, topCategories };
   }, [expenses]);
 
   const cards = [
-    {
-      title: "This Month (EUR)",
-      value: fmtEur(kpis.thisTotal),
-      sub: kpis.change >= 0
-        ? "+" + kpis.change.toFixed(1) + "% vs last month"
-        : kpis.change.toFixed(1) + "% vs last month",
-      icon: kpis.change >= 0 ? TrendingUp : TrendingDown,
-      color: kpis.change >= 0 ? "text-red-500" : "text-green-500",
-    },
-    {
-      title: "Last Month (EUR)",
-      value: fmtEur(kpis.lastTotal),
-      sub: kpis.lastTotal > 0 ? "Previous period" : "No data",
-      icon: Receipt,
-      color: "text-blue-500",
-    },
-    {
-      title: "Pending Approval",
-      value: String(kpis.pending),
-      sub: "Awaiting review",
-      icon: Clock,
-      color: "text-orange-500",
-    },
-    {
-      title: "Approved",
-      value: String(kpis.approved),
-      sub: "All time",
-      icon: TrendingUp,
-      color: "text-green-500",
-    },
+    { title: "This Month (EUR)", value: fmtEur(kpis.thisTotal), sub: (kpis.change >= 0 ? "+" : "") + kpis.change.toFixed(1) + "% vs last month", icon: kpis.change >= 0 ? TrendingUp : TrendingDown, color: kpis.change >= 0 ? "text-red-500" : "text-green-500" },
+    { title: "Last Month (EUR)", value: fmtEur(kpis.lastTotal), sub: "Previous period", icon: Receipt, color: "text-blue-500" },
+    { title: "Pending Approval", value: String(kpis.pending), sub: "Awaiting review", icon: Clock, color: "text-orange-500" },
+    { title: "Approved", value: String(kpis.approved), sub: "All time", icon: TrendingUp, color: "text-green-500" },
   ];
 
   return (
-    <div className="p-6"><DataPageHeader title="Dashboard" />
+    <div className="p-6">
+      <DataPageHeader title="Dashboard" />
       {isLoading ? (
         <div className="flex items-center justify-center h-40 text-muted-foreground">Loading...</div>
       ) : (
         <div className="space-y-6">
-          {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {cards.map(c => (
               <Card key={c.title}>
@@ -97,12 +62,8 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
-
-          {/* Spend by Category */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Top Categories â This Month</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Top Categories - This Month</CardTitle></CardHeader>
             <CardContent>
               {kpis.topCategories.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No expenses this month</p>
@@ -126,12 +87,8 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Recent Expenses */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recent Expenses</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Recent Expenses</CardTitle></CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
@@ -147,10 +104,8 @@ export default function DashboardPage() {
                       <td className="px-4 py-2 font-medium">{e.title}</td>
                       <td className="px-4 py-2 text-muted-foreground">{e.expense_date}</td>
                       <td className="px-4 py-2">{fmtCurrency(e.amount, e.currency)}</td>
-                      <td className="px-4 py-2">{e.expense_categories?.name || "â"}</td>
-                      <td className="px-4 py-2">
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-muted">{e.status}</span>
-                      </td>
+                      <td className="px-4 py-2">{e.expense_categories?.name || ""}</td>
+                      <td className="px-4 py-2"><span className="px-2 py-0.5 rounded-full text-xs bg-muted">{e.status}</span></td>
                     </tr>
                   ))}
                   {expenses.length === 0 && (
