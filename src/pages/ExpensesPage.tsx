@@ -133,8 +133,8 @@ export default function ExpensesPage() {
                   <td className="px-4 py-3 font-medium">{e.title}</td>
                   <td className="px-4 py-3 text-muted-foreground">{fmtDate(e.expense_date)}</td>
                   <td className="px-4 py-3">{fmtCurrency(e.amount, e.currency)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{e.base_amount ? fmtCurrency(e.base_amount,"EUR") : "Ã¢ÂÂ"}</td>
-                  <td className="px-4 py-3">{e.expense_categories?.name || "Ã¢ÂÂ"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{e.base_amount ? fmtCurrency(e.base_amount,"EUR") : ""}</td>
+                  <td className="px-4 py-3">{e.expense_categories?.name || ""}</td>
                   <td className="px-4 py-3"><span className={"px-2 py-0.5 rounded-full text-xs font-medium " + (statusColor[e.status]||"")}>{e.status}</span></td>
                   <td className="px-4 py-3"></td>
                 </tr>
@@ -177,7 +177,7 @@ export default function ExpensesPage() {
               <Label>Receipt / Invoice</Label>
               <div className="flex items-center gap-2 mt-1">
                 <label className="flex items-center gap-2 px-3 py-2 border rounded cursor-pointer text-sm hover:bg-muted/50">
-                  {scanning ? <span className="animate-spin">Ã¢ÂÂ³</span> : <ScanLine className="h-4 w-4"/>}
+                  {scanning ? <span className="animate-spin"></span> : <ScanLine className="h-4 w-4"/>}
                   {scanning ? "Scanning..." : "Choose File"}
                   <input type="file" className="hidden" accept="image/*,application/pdf" onChange={e=>{ const f=e.target.files?.[0]; if(f) handleScan(f); }} disabled={scanning}/>
                 </label>
