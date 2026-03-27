@@ -14,39 +14,40 @@ import { PinDialog } from "@/components/PinDialog";
 import { PinSetupDialog } from "@/components/PinSetupDialog";
 import { useToast } from "@/hooks/use-toast";
 import { CreditCard, Eye, EyeOff, Snowflake, X, Copy, Check, Pencil } from "lucide-react";
+import { freezeCard, unfreezeCard, cancelCard, updateCardLimit } from "@/lib/cardActions";
 
 const COUNTRIES = [
-  { code: "DE", name: "Germany", flag: "🇩🇪" },
-  { code: "AT", name: "Austria", flag: "🇦🇹" },
-  { code: "CH", name: "Switzerland", flag: "🇨🇭" },
-  { code: "FR", name: "France", flag: "🇫🇷" },
-  { code: "NL", name: "Netherlands", flag: "🇳🇱" },
-  { code: "BE", name: "Belgium", flag: "🇧🇪" },
-  { code: "IT", name: "Italy", flag: "🇮🇹" },
-  { code: "ES", name: "Spain", flag: "🇪🇸" },
-  { code: "PT", name: "Portugal", flag: "🇵🇹" },
-  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
-  { code: "IE", name: "Ireland", flag: "🇮🇪" },
-  { code: "SE", name: "Sweden", flag: "🇸🇪" },
-  { code: "NO", name: "Norway", flag: "🇳🇴" },
-  { code: "DK", name: "Denmark", flag: "🇩🇰" },
-  { code: "FI", name: "Finland", flag: "🇫🇮" },
-  { code: "PL", name: "Poland", flag: "🇵🇱" },
-  { code: "CZ", name: "Czech Republic", flag: "🇨🇿" },
-  { code: "US", name: "United States", flag: "🇺🇸" },
-  { code: "CA", name: "Canada", flag: "🇨🇦" },
-  { code: "AE", name: "UAE", flag: "🇦🇪" },
-  { code: "SG", name: "Singapore", flag: "🇸🇬" },
-  { code: "JP", name: "Japan", flag: "🇯🇵" },
-  { code: "AU", name: "Australia", flag: "🇦🇺" },
-  { code: "IN", name: "India", flag: "🇮🇳" },
-  { code: "BR", name: "Brazil", flag: "🇧🇷" },
-  { code: "CN", name: "China", flag: "🇨🇳" },
-  { code: "KR", name: "South Korea", flag: "🇰🇷" },
-  { code: "TR", name: "Turkey", flag: "🇹🇷" },
-  { code: "SA", name: "Saudi Arabia", flag: "🇸🇦" },
-  { code: "ZA", name: "South Africa", flag: "🇿🇦" },
-  { code: "MX", name: "Mexico", flag: "🇲🇽" },
+  { code: "DE", name: "Germany", flag: "ð©ðª" },
+  { code: "AT", name: "Austria", flag: "ð¦ð¹" },
+  { code: "CH", name: "Switzerland", flag: "ð¨ð­" },
+  { code: "FR", name: "France", flag: "ð«ð·" },
+  { code: "NL", name: "Netherlands", flag: "ð³ð±" },
+  { code: "BE", name: "Belgium", flag: "ð§ðª" },
+  { code: "IT", name: "Italy", flag: "ð®ð¹" },
+  { code: "ES", name: "Spain", flag: "ðªð¸" },
+  { code: "PT", name: "Portugal", flag: "ðµð¹" },
+  { code: "GB", name: "United Kingdom", flag: "ð¬ð§" },
+  { code: "IE", name: "Ireland", flag: "ð®ðª" },
+  { code: "SE", name: "Sweden", flag: "ð¸ðª" },
+  { code: "NO", name: "Norway", flag: "ð³ð´" },
+  { code: "DK", name: "Denmark", flag: "ð©ð°" },
+  { code: "FI", name: "Finland", flag: "ð«ð®" },
+  { code: "PL", name: "Poland", flag: "ðµð±" },
+  { code: "CZ", name: "Czech Republic", flag: "ð¨ð¿" },
+  { code: "US", name: "United States", flag: "ðºð¸" },
+  { code: "CA", name: "Canada", flag: "ð¨ð¦" },
+  { code: "AE", name: "UAE", flag: "ð¦ðª" },
+  { code: "SG", name: "Singapore", flag: "ð¸ð¬" },
+  { code: "JP", name: "Japan", flag: "ð¯ðµ" },
+  { code: "AU", name: "Australia", flag: "ð¦ðº" },
+  { code: "IN", name: "India", flag: "ð®ð³" },
+  { code: "BR", name: "Brazil", flag: "ð§ð·" },
+  { code: "CN", name: "China", flag: "ð¨ð³" },
+  { code: "KR", name: "South Korea", flag: "ð°ð·" },
+  { code: "TR", name: "Turkey", flag: "ð¹ð·" },
+  { code: "SA", name: "Saudi Arabia", flag: "ð¸ð¦" },
+  { code: "ZA", name: "South Africa", flag: "ð¿ð¦" },
+  { code: "MX", name: "Mexico", flag: "ð²ð½" },
 ];
 
 interface CardDetailPanelProps {
@@ -133,7 +134,7 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
         return;
       }
     } catch {
-      // RPC unavailable — proceed to PIN entry
+      // RPC unavailable â proceed to PIN entry
     }
     setPinDialogOpen(true);
   };
@@ -148,8 +149,8 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
       // RPC returns a single JSON object
       const raw = Array.isArray(data) ? (data[0] ?? null) : (data as any);
 
-      const cardNumber = raw?.card_number || raw?.card_number_encrypted || ("•••• •••• •••• " + card.last_four);
-      const cvv = raw?.cvv || raw?.cvv_encrypted || "•••";
+      const cardNumber = raw?.card_number || ("â¢â¢â¢â¢ â¢â¢â¢â¢ â¢â¢â¢â¢ " + (raw?.last_four ?? card.last_four));
+      const cvv = "â¢â¢â¢";
       const expiryMonth = raw?.expiry_month ?? card.expiry_month ?? (new Date().getMonth() + 1);
       const expiryYear = raw?.expiry_year ?? card.expiry_year ?? (new Date().getFullYear() + 3);
 
@@ -158,7 +159,7 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
       setPinDialogOpen(false);
     } catch (err: any) {
       const msg = (err.message || "").toLowerCase();
-      setPinError(msg.includes("invalid") || msg.includes("pin") ? "Invalid PIN — please try again" : (err.message || "Failed to retrieve card details"));
+      setPinError(msg.includes("invalid") || msg.includes("pin") ? "Invalid PIN â please try again" : (err.message || "Failed to retrieve card details"));
     } finally {
       setPinLoading(false);
     }
@@ -179,11 +180,12 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
 
   const toggleStatus = useMutation({
     mutationFn: async (newStatus: "active" | "frozen" | "cancelled") => {
-      const { error } = await supabase.from("cards").update({ status: newStatus }).eq("id", card.id);
-      if (error) throw error;
+      if (newStatus === "frozen") await freezeCard(card.id, orgId!);
+      else if (newStatus === "active") await unfreezeCard(card.id, orgId!);
+      else if (newStatus === "cancelled") await cancelCard(card.id, orgId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cards"] });
+      queryClient.invalidateQueries({ queryKey: ["cards", orgId] });
       toast({ title: "Card updated" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -191,18 +193,10 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
 
   const updateCard = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("cards").update({
-        card_name: editName,
-        spending_limit: parseFloat(editLimit),
-        spend_period: editPeriod,
-        allowed_category_ids: editCategories.length > 0 ? editCategories : [],
-        wallet_id: editWalletId === "none" ? null : editWalletId,
-        allowed_countries: countryMode === "all" ? [] : editCountries,
-      }).eq("id", card.id);
-      if (error) throw error;
+      await updateCardLimit(card.id, orgId!, parseFloat(editLimit), editPeriod as "daily" | "monthly");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cards"] });
+      queryClient.invalidateQueries({ queryKey: ["cards", orgId] });
       setEditing(false);
       toast({ title: "Card settings updated" });
     },
@@ -239,7 +233,7 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
               </div>
               <div>
                 <p className="text-lg font-mono tracking-widest">
-                  {showDetails && cardDetails ? formatCardNumber(cardDetails.card_number) : `•••• •••• •••• ${card.last_four}`}
+                  {showDetails && cardDetails ? formatCardNumber(cardDetails.card_number) : `â¢â¢â¢â¢ â¢â¢â¢â¢ â¢â¢â¢â¢ ${card.last_four}`}
                 </p>
               </div>
               <div className="flex justify-between items-end">
@@ -252,7 +246,7 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                   <p className="text-sm font-mono">
                     {showDetails && cardDetails
                       ? `${String(cardDetails.expiry_month).padStart(2, "0")}/${String(cardDetails.expiry_year).slice(-2)}`
-                      : "••/••"}
+                      : "â¢â¢/â¢â¢"}
                   </p>
                 </div>
               </div>
@@ -324,11 +318,11 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Spend limit</span>
-                  <span className="font-medium">{Number(card.spending_limit).toLocaleString("de-DE")} € / {card.spend_period}</span>
+                  <span className="font-medium">{Number(card.spending_limit).toLocaleString("de-DE")} â¬ / {card.spend_period}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Wallet</span>
-                  <span>{card.wallets?.name || "—"}</span>
+                  <span>{card.wallets?.name || "â"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Country restrictions</span>
@@ -350,7 +344,7 @@ export function CardDetailPanel({ card, open, onOpenChange, getMemberName }: Car
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Spend limit (€)</Label>
+                    <Label>Spend limit (â¬)</Label>
                     <Input type="number" step="0.01" min="0" value={editLimit} onChange={(e) => setEditLimit(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
