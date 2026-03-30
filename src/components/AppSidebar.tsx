@@ -1,15 +1,43 @@
+// src/components/AppSidebar.tsx
+// PATCHED: added Transactions nav item under Finance, after Cards.
+
 import {
-  LayoutDashboard, CreditCard, Receipt, RefreshCw, FileText, FileOutput,
-  PiggyBank, Users, Building2, Calculator, TrendingUp, Briefcase, Wallet,
-  BarChart3, UserCog, DollarSign, Plug, Bell, Download, Shield,
+  LayoutDashboard,
+  CreditCard,
+  Receipt,
+  RefreshCw,
+  FileText,
+  FileOutput,
+  PiggyBank,
+  Users,
+  Building2,
+  Calculator,
+  TrendingUp,
+  Briefcase,
+  Wallet,
+  BarChart3,
+  UserCog,
+  DollarSign,
+  Plug,
+  Bell,
+  Download,
+  Shield,
+  ArrowLeftRight, // Transactions
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useOrganization } from "@/hooks/useOrganization";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarHeader, useSidebar,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const navSections = [
@@ -20,13 +48,14 @@ const navSections = [
   {
     label: "Finance",
     items: [
-      { title: "Wallets",         url: "/wallets",        icon: Wallet },
-      { title: "Cards",           url: "/cards",          icon: CreditCard },
-      { title: "Expenses",        url: "/expenses",        icon: Receipt },
-      { title: "Reimbursements",  url: "/reimbursements", icon: RefreshCw },
-      { title: "AP Invoices",     url: "/ap-invoices",    icon: FileText },
-      { title: "AR Invoices",     url: "/ar-invoices",    icon: FileOutput },
-      { title: "Budgets",         url: "/budgets",        icon: PiggyBank },
+      { title: "Wallets",        url: "/wallets",       icon: Wallet },
+      { title: "Cards",          url: "/cards",         icon: CreditCard },
+      { title: "Transactions",   url: "/transactions",  icon: ArrowLeftRight }, // Phase B
+      { title: "Expenses",       url: "/expenses",      icon: Receipt },
+      { title: "Reimbursements", url: "/reimbursements",icon: RefreshCw },
+      { title: "AP Invoices",    url: "/ap-invoices",   icon: FileText },
+      { title: "AR Invoices",    url: "/ar-invoices",   icon: FileOutput },
+      { title: "Budgets",        url: "/budgets",       icon: PiggyBank },
     ],
   },
   {
@@ -39,20 +68,20 @@ const navSections = [
   {
     label: "Accounting",
     items: [
-      { title: "Accounting",  url: "/accounting", icon: Calculator },
-      { title: "Cash Flow",   url: "/cash-flow",  icon: TrendingUp },
-      { title: "Tax Advisor", url: "/tax-advisor",icon: Briefcase },
-      { title: "Reports",     url: "/reports",    icon: BarChart3 },
+      { title: "Accounting",  url: "/accounting",  icon: Calculator },
+      { title: "Cash Flow",   url: "/cash-flow",   icon: TrendingUp },
+      { title: "Tax Advisor", url: "/tax-advisor", icon: Briefcase },
+      { title: "Reports",     url: "/reports",     icon: BarChart3 },
     ],
   },
   {
     label: "Company",
     items: [
-      { title: "Team",         url: "/team",        icon: UserCog },
-      { title: "Billing",      url: "/billing",     icon: DollarSign },
-      { title: "Integrations", url: "/integrations",icon: Plug },
+      { title: "Team",         url: "/team",         icon: UserCog },
+      { title: "Billing",      url: "/billing",      icon: DollarSign },
+      { title: "Integrations", url: "/integrations", icon: Plug },
       { title: "Notifications",url: "/notifications",icon: Bell },
-      { title: "Import data",  url: "/import-data", icon: Download },
+      { title: "Import data",  url: "/import-data",  icon: Download },
     ],
   },
   {
