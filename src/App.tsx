@@ -1,3 +1,6 @@
+// src/App.tsx
+// PATCHED: added /transactions route + TransactionsPage import.
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -23,6 +26,7 @@ import CashFlowPage from "./pages/CashFlowPage";
 import TaxAdvisorPage from "./pages/TaxAdvisorPage";
 import ReportsPage from "./pages/ReportsPage";
 import CardsPage from "./pages/CardsPage";
+import TransactionsPage from "./pages/TransactionsPage"; // Phase B
 import BudgetsPage from "./pages/BudgetsPage";
 import BillingPage from "./pages/BillingPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
@@ -48,27 +52,28 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route path="/seed" element={<SeedPage />} />
               <Route element={<DashboardLayout />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/wallets" element={<WalletsPage />} />
-                <Route path="/team" element={<TeamPage />} />
-                <Route path="/expenses" element={<ExpensesPage />} />
+                <Route path="/dashboard"    element={<DashboardPage />} />
+                <Route path="/wallets"      element={<WalletsPage />} />
+                <Route path="/team"         element={<TeamPage />} />
+                <Route path="/expenses"     element={<ExpensesPage />} />
                 <Route path="/reimbursements" element={<ReimbursementsPage />} />
-                <Route path="/ap-invoices" element={<APInvoicesPage />} />
-                <Route path="/ar-invoices" element={<ARInvoicesPage />} />
-                <Route path="/suppliers" element={<SuppliersPage />} />
-                <Route path="/customers" element={<CustomersPage />} />
-                <Route path="/accounting" element={<AccountingPage />} />
-                <Route path="/cash-flow" element={<CashFlowPage />} />
-                <Route path="/tax-advisor" element={<TaxAdvisorPage />} />
-                <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/cards" element={<CardsPage />} />
-                <Route path="/budgets" element={<BudgetsPage />} />
-                <Route path="/billing" element={<BillingPage />} />
+                <Route path="/ap-invoices"  element={<APInvoicesPage />} />
+                <Route path="/ar-invoices"  element={<ARInvoicesPage />} />
+                <Route path="/suppliers"    element={<SuppliersPage />} />
+                <Route path="/customers"    element={<CustomersPage />} />
+                <Route path="/accounting"   element={<AccountingPage />} />
+                <Route path="/cash-flow"    element={<CashFlowPage />} />
+                <Route path="/tax-advisor"  element={<TaxAdvisorPage />} />
+                <Route path="/reports"      element={<ReportsPage />} />
+                <Route path="/cards"        element={<CardsPage />} />
+                <Route path="/transactions" element={<TransactionsPage />} />
+                <Route path="/budgets"      element={<BudgetsPage />} />
+                <Route path="/billing"      element={<BillingPage />} />
                 <Route path="/integrations" element={<IntegrationsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/import-data" element={<ImportDataPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="/audit-log" element={<AuditLogPage />} />
+                <Route path="/import-data"  element={<ImportDataPage />} />
+                <Route path="/admin"        element={<AdminPage />} />
+                <Route path="/audit-log"    element={<AuditLogPage />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
