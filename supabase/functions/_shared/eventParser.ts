@@ -85,7 +85,7 @@ function parseMock(payload: Record<string, unknown>): NormalizedEvent {
       return { ...base, eventClass: "transaction.failed",     txStatus: "failed" }     as NormalizedEvent;
 
     case "mock.transaction.reversed":
-      return { ...base, eventClas: "transaction.reversed",   txStatus: "reversed" }   as NormalizedEvent;
+      return { ...base, eventClass: "transaction.reversed",   txStatus: "reversed" }   as NormalizedEvent;
 
     case "mock.transaction.disputed":
       return { ...base, eventClass: "transaction.disputed",   txStatus: "disputed" }   as NormalizedEvent;
