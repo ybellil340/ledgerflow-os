@@ -31,3 +31,6 @@ export function fmtPercent(value: number, decimals = 1): string {
 export function fmtNumber(value: number, decimals = 2): string {
   return new Intl.NumberFormat("de-DE", { minimumFractionDigits: decimals }).format(value);
 }
+
+// Aliases for backward-compat imports
+export const formatCurrency = fmtCurrency;
