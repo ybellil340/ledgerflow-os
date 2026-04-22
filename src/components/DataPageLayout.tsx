@@ -213,3 +213,18 @@ export function StatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+
+
+// Wrapper component that combines DataPageHeader + children layout
+interface DataPageLayoutProps extends DataPageHeaderProps {
+  children: ReactNode;
+}
+
+export function DataPageLayout({ children, ...headerProps }: DataPageLayoutProps) {
+  return (
+    <div className="flex flex-col h-full">
+      <DataPageHeader {...headerProps} />
+      <div className="flex-1 overflow-auto">{children}</div>
+    </div>
+  );
+}
